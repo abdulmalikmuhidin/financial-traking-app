@@ -1,0 +1,339 @@
+import bcrypt from 'bcryptjs';
+
+export interface StoredUser {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  jobTitle: string;
+  preferredCurrency: string;
+  isDemoUser: boolean;
+  monthlyIncomeTarget: number;
+  alertThresholdPercent: number;
+  createdAt: string;
+}
+
+export interface StoredTransaction {
+  id: string;
+  userId: string;
+  type: 'income' | 'expense';
+  amount: number;
+  currency: string;
+  categoryId: string;
+  date: string;
+  description: string;
+  merchant?: string;
+  paymentMethod: string;
+  notes?: string;
+  isRecurring?: boolean;
+  createdAt: string;
+}
+
+export interface StoredBudget {
+  id: string;
+  userId: string;
+  categoryId: string;
+  monthlyLimit: number;
+  month: string;
+  currency: string;
+}
+
+export interface StoredCategory {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
+  icon: string;
+  color: string;
+  isDefault: boolean;
+  userId?: string;
+}
+
+class FallbackStore {
+  public users: StoredUser[] = [];
+  public transactions: StoredTransaction[] = [];
+  public budgets: StoredBudget[] = [];
+  public categories: StoredCategory[] = [];
+
+  constructor() {
+    this.seedDemoData();
+  }
+
+  private async seedDemoData() {
+    const demoPasswordHash = await bcrypt.hash('password123', 10);
+    const demoUserId = 'user-demo-alex';
+
+    this.users = [
+      {
+        id: demoUserId,
+        name: 'Alex Morgan',
+        email: 'alex.morgan@fintrack.app',
+        passwordHash: demoPasswordHash,
+        jobTitle: 'Senior Product Designer',
+        preferredCurrency: 'USD',
+        isDemoUser: true,
+        monthlyIncomeTarget: 8500,
+        alertThresholdPercent: 80,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    this.categories = [
+      { id: 'cat-housing', name: 'Housing & Rent', type: 'expense', icon: 'Home', color: '#3B82F6', isDefault: true },
+      { id: 'cat-food', name: 'Food & Dining', type: 'expense', icon: 'Utensils', color: '#10B981', isDefault: true },
+      { id: 'cat-transport', name: 'Transportation', type: 'expense', icon: 'Car', color: '#F59E0B', isDefault: true },
+      { id: 'cat-utilities', name: 'Utilities & Bills', type: 'expense', icon: 'Zap', color: '#6366F1', isDefault: true },
+      { id: 'cat-shopping', name: 'Shopping & Retail', type: 'expense', icon: 'ShoppingBag', color: '#EC4899', isDefault: true },
+      { id: 'cat-entertainment', name: 'Entertainment', type: 'expense', icon: 'Tv', color: '#8B5CF6', isDefault: true },
+      { id: 'cat-healthcare', name: 'Healthcare & Wellness', type: 'expense', icon: 'HeartPulse', color: '#14B8A6', isDefault: true },
+      { id: 'cat-education', name: 'Education & Courses', type: 'expense', icon: 'GraduationCap', color: '#0EA5E9', isDefault: true },
+      { id: 'cat-travel', name: 'Travel & Trips', type: 'expense', icon: 'Plane', color: '#F97316', isDefault: true },
+      { id: 'cat-investments', name: 'Investments & Savings', type: 'expense', icon: 'TrendingUp', color: '#059669', isDefault: true },
+      { id: 'cat-salary', name: 'Salary & Wages', type: 'income', icon: 'Briefcase', color: '#10B981', isDefault: true },
+      { id: 'cat-freelance', name: 'Freelance & Consulting', type: 'income', icon: 'Laptop', color: '#3B82F6', isDefault: true },
+      { id: 'cat-dividends', name: 'Dividends & Interest', type: 'income', icon: 'PiggyBank', color: '#8B5CF6', isDefault: true },
+      { id: 'cat-gifts', name: 'Gifts & Refunds', type: 'income', icon: 'Gift', color: '#F59E0B', isDefault: true },
+    ];
+
+    this.budgets = [
+      { id: 'b-housing', userId: demoUserId, categoryId: 'cat-housing', monthlyLimit: 2200, month: '2026-10', currency: 'USD' },
+      { id: 'b-food', userId: demoUserId, categoryId: 'cat-food', monthlyLimit: 750, month: '2026-10', currency: 'USD' },
+      { id: 'b-transport', userId: demoUserId, categoryId: 'cat-transport', monthlyLimit: 300, month: '2026-10', currency: 'USD' },
+      { id: 'b-utilities', userId: demoUserId, categoryId: 'cat-utilities', monthlyLimit: 280, month: '2026-10', currency: 'USD' },
+      { id: 'b-shopping', userId: demoUserId, categoryId: 'cat-shopping', monthlyLimit: 450, month: '2026-10', currency: 'USD' },
+      { id: 'b-entertainment', userId: demoUserId, categoryId: 'cat-entertainment', monthlyLimit: 250, month: '2026-10', currency: 'USD' },
+      { id: 'b-healthcare', userId: demoUserId, categoryId: 'cat-healthcare', monthlyLimit: 180, month: '2026-10', currency: 'USD' },
+      { id: 'b-education', userId: demoUserId, categoryId: 'cat-education', monthlyLimit: 150, month: '2026-10', currency: 'USD' },
+    ];
+
+    this.transactions = [
+      {
+        id: 'tx-101',
+        userId: demoUserId,
+        type: 'income',
+        amount: 5800.0,
+        currency: 'USD',
+        categoryId: 'cat-salary',
+        date: '2026-10-01',
+        description: 'Bi-weekly Direct Deposit Salary',
+        merchant: 'Stripe Technologies Inc.',
+        paymentMethod: 'Direct Deposit',
+        notes: 'Regular salary disbursement after taxes',
+        isRecurring: true,
+        createdAt: '2026-10-01T08:00:00Z',
+      },
+      {
+        id: 'tx-102',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 2150.0,
+        currency: 'USD',
+        categoryId: 'cat-housing',
+        date: '2026-10-02',
+        description: 'Monthly Apartment Rent & Parking',
+        merchant: 'Skyline Residential Management',
+        paymentMethod: 'Bank Transfer',
+        notes: 'Unit 14B + reserved parking slot',
+        isRecurring: true,
+        createdAt: '2026-10-02T10:15:00Z',
+      },
+      {
+        id: 'tx-103',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 142.5,
+        currency: 'USD',
+        categoryId: 'cat-food',
+        date: '2026-10-03',
+        description: 'Weekly Organic Grocery Run',
+        merchant: 'Whole Foods Market',
+        paymentMethod: 'Credit Card',
+        isRecurring: false,
+        createdAt: '2026-10-03T14:20:00Z',
+      },
+      {
+        id: 'tx-104',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 115.0,
+        currency: 'USD',
+        categoryId: 'cat-utilities',
+        date: '2026-10-04',
+        description: 'High-Speed Fiber Internet',
+        merchant: 'Gigabit Fiber Corp',
+        paymentMethod: 'Credit Card',
+        isRecurring: true,
+        createdAt: '2026-10-04T09:00:00Z',
+      },
+      {
+        id: 'tx-105',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 52.0,
+        currency: 'USD',
+        categoryId: 'cat-transport',
+        date: '2026-10-06',
+        description: 'Metropolitan Transit Pass Refill',
+        merchant: 'Metro Transit Authority',
+        paymentMethod: 'Debit Card',
+        isRecurring: true,
+        createdAt: '2026-10-06T08:30:00Z',
+      },
+      {
+        id: 'tx-106',
+        userId: demoUserId,
+        type: 'income',
+        amount: 1450.0,
+        currency: 'USD',
+        categoryId: 'cat-freelance',
+        date: '2026-10-08',
+        description: 'Design System Consulting Milestone 2',
+        merchant: 'Aether Labs',
+        paymentMethod: 'Electronic Transfer',
+        isRecurring: false,
+        createdAt: '2026-10-08T16:45:00Z',
+      },
+      {
+        id: 'tx-107',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 78.4,
+        currency: 'USD',
+        categoryId: 'cat-food',
+        date: '2026-10-10',
+        description: 'Dinner with colleagues',
+        merchant: 'Osteria San Marco',
+        paymentMethod: 'Credit Card',
+        isRecurring: false,
+        createdAt: '2026-10-10T20:10:00Z',
+      },
+      {
+        id: 'tx-108',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 85.0,
+        currency: 'USD',
+        categoryId: 'cat-healthcare',
+        date: '2026-10-11',
+        description: 'Monthly Gym & Wellness Membership',
+        merchant: 'Equinox Fitness Club',
+        paymentMethod: 'Credit Card',
+        isRecurring: true,
+        createdAt: '2026-10-11T07:15:00Z',
+      },
+      {
+        id: 'tx-109',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 29.99,
+        currency: 'USD',
+        categoryId: 'cat-entertainment',
+        date: '2026-10-12',
+        description: 'Streaming & Music Subscriptions',
+        merchant: 'Spotify & Criterion Channel',
+        paymentMethod: 'Credit Card',
+        isRecurring: true,
+        createdAt: '2026-10-12T11:00:00Z',
+      },
+      {
+        id: 'tx-110',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 198.5,
+        currency: 'USD',
+        categoryId: 'cat-shopping',
+        date: '2026-10-14',
+        description: 'Ergonomic Desk Accessories & Lamp',
+        merchant: 'Design Within Reach',
+        paymentMethod: 'Credit Card',
+        isRecurring: false,
+        createdAt: '2026-10-14T15:30:00Z',
+      },
+      {
+        id: 'tx-111',
+        userId: demoUserId,
+        type: 'income',
+        amount: 5800.0,
+        currency: 'USD',
+        categoryId: 'cat-salary',
+        date: '2026-10-15',
+        description: 'Bi-weekly Direct Deposit Salary',
+        merchant: 'Stripe Technologies Inc.',
+        paymentMethod: 'Direct Deposit',
+        isRecurring: true,
+        createdAt: '2026-10-15T08:00:00Z',
+      },
+      {
+        id: 'tx-112',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 86.2,
+        currency: 'USD',
+        categoryId: 'cat-utilities',
+        date: '2026-10-16',
+        description: 'City Electric & Clean Water Bill',
+        merchant: 'Municipal Utility District',
+        paymentMethod: 'Bank Transfer',
+        isRecurring: true,
+        createdAt: '2026-10-16T12:00:00Z',
+      },
+      {
+        id: 'tx-113',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 165.0,
+        currency: 'USD',
+        categoryId: 'cat-food',
+        date: '2026-10-18',
+        description: 'Bi-weekly Farmers Market & Bakery',
+        merchant: 'Union Square Greenmarket',
+        paymentMethod: 'Debit Card',
+        isRecurring: false,
+        createdAt: '2026-10-18T10:45:00Z',
+      },
+      {
+        id: 'tx-114',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 45.0,
+        currency: 'USD',
+        categoryId: 'cat-transport',
+        date: '2026-10-19',
+        description: 'Airport Rideshare Trip',
+        merchant: 'Lyft Premium',
+        paymentMethod: 'Credit Card',
+        isRecurring: false,
+        createdAt: '2026-10-19T06:15:00Z',
+      },
+      {
+        id: 'tx-115',
+        userId: demoUserId,
+        type: 'income',
+        amount: 240.0,
+        currency: 'USD',
+        categoryId: 'cat-dividends',
+        date: '2026-10-20',
+        description: 'Quarterly S&P 500 Index Dividend',
+        merchant: 'Vanguard Index Funds',
+        paymentMethod: 'Direct Deposit',
+        isRecurring: false,
+        createdAt: '2026-10-20T09:30:00Z',
+      },
+      {
+        id: 'tx-116',
+        userId: demoUserId,
+        type: 'expense',
+        amount: 600.0,
+        currency: 'USD',
+        categoryId: 'cat-investments',
+        date: '2026-10-21',
+        description: 'Automated Roth IRA Contribution',
+        merchant: 'Vanguard Brokerage',
+        paymentMethod: 'Bank Transfer',
+        isRecurring: true,
+        createdAt: '2026-10-21T09:00:00Z',
+      },
+    ];
+  }
+}
+
+export const fallbackStore = new FallbackStore();

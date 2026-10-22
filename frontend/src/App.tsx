@@ -1,0 +1,137 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { FinanceProvider } from './context/FinanceContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { NavigationTab, Transaction } from './types';
+import { Sidebar } from './components/layout/Sidebar';
+import { Header } from './components/layout/Header';
+import { DashboardView } from './components/dashboard/DashboardView';
+import { TransactionsView } from './components/transactions/TransactionsView';
+import { BudgetsView } from './components/budgets/BudgetsView';
+import { AnalyticsView } from './components/analytics/AnalyticsView';
+import { CategoriesView } from './components/categories/CategoriesView';
+import { SettingsView } from './components/settings/SettingsView';
+import { TransactionModal } from './components/transactions/TransactionModal';
+import { TransactionDetailModal } from './components/transactions/TransactionDetailModal';
+import { ConfirmationModal } from './components/common/ConfirmationModal';
+import { ToastContainer } from './components/common/ToastContainer';
+import { AuthPage } from './components/auth/AuthPage';
+
+const MainApp: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  // Navigation state
+  const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Modal states
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
+  const [txToView, setTxToView] = useState<Transaction | null>(null);
+
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
+  const handleOpenNewTransaction = () => {
+    setTxToEdit(null);
+    setIsTxModalOpen(true);
+  };
+
+  const handleEditTransaction = (tx: Transaction) => {
+    setTxToEdit(tx);
+    setIsTxModalOpen(true);
+  };
+
+  const handleViewTransaction = (tx: Transaction) => {
+    setTxToView(tx);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans selection:bg-emerald-500/20 selection:text-emerald-950">
+      {/* Sidebar */}
+      <Sidebar
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onOpenNewTransaction={handleOpenNewTransaction}
+      />
+
+      {/* Main Viewport */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        <Header
+          currentTab={currentTab}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onOpenNewTransaction={handleOpenNewTransaction}
+          onNavigate={setCurrentTab}
+        />
+
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+          {currentTab === 'dashboard' && (
+            <DashboardView
+              onNavigate={setCurrentTab}
+              onOpenNewTransaction={handleOpenNewTransaction}
+              onViewTransaction={handleViewTransaction}
+            />
+          )}
+
+          {currentTab === 'transactions' && (
+            <TransactionsView
+              onOpenNewTransaction={handleOpenNewTransaction}
+              onEditTransaction={handleEditTransaction}
+              onViewTransaction={handleViewTransaction}
+            />
+          )}
+
+          {currentTab === 'budgets' && <BudgetsView />}
+
+          {currentTab === 'analytics' && <AnalyticsView />}
+
+          {currentTab === 'categories' && <CategoriesView />}
+
+          {currentTab === 'settings' && <SettingsView />}
+        </main>
+      </div>
+
+      {/* Global Modals & Notifications */}
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={() => {
+          setIsTxModalOpen(false);
+          setTxToEdit(null);
+        }}
+        transactionToEdit={txToEdit}
+      />
+
+      <TransactionDetailModal
+        transaction={txToView}
+        onClose={() => setTxToView(null)}
+        onEdit={handleEditTransaction}
+      />
+
+      <ConfirmationModal />
+      <ToastContainer />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <FinanceProvider>
+          <MainApp />
+        </FinanceProvider>
+      </AuthProvider>
+    </LanguageProvider>
+  );
+}
