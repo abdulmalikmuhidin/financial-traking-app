@@ -1,0 +1,331 @@
+import React, { useState, useRef } from 'react';
+import { 
+  User, 
+  Coins, 
+  Database, 
+  Download, 
+  Upload, 
+  RotateCcw, 
+  Trash2, 
+  ShieldAlert, 
+  Check, 
+  Sparkles,
+  FileSpreadsheet
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useFinance } from '../../context/FinanceContext';
+import { SUPPORTED_CURRENCIES } from '../../utils/currencies';
+
+export const SettingsView: React.FC = () => {
+  const { currentUser, updateProfile, loginAsDemo } = useAuth();
+  const { 
+    currency, 
+    setCurrency, 
+    exportBackupJSON, 
+    importBackupJSON, 
+    exportTransactionsToCSV,
+    resetToDemoData, 
+    clearAllUserData,
+    requestConfirmation,
+    showToast 
+  } = useFinance();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile form state
+  const [name, setName] = useState(currentUser?.name || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
+  const [jobTitle, setJobTitle] = useState(currentUser?.jobTitle || '');
+  const [incomeTarget, setIncomeTarget] = useState(currentUser?.monthlyIncomeTarget?.toString() || '6000');
+  const [isSaved, setIsSaved] = useState(false);
+
+  const handleProfileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile({
+      name: name.trim(),
+      email: email.trim(),
+      jobTitle: jobTitle.trim(),
+      monthlyIncomeTarget: parseFloat(incomeTarget) || 5000,
+    });
+    setIsSaved(true);
+    showToast('Profile information updated', 'success');
+    setTimeout(() => setIsSaved(false), 2500);
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        importBackupJSON(content);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleResetDemoConfirm = () => {
+    requestConfirmation({
+      title: 'Reset to Demo Dataset',
+      message: 'This will reset all transactions, budgets, and categories back to the rich demo template. Any custom modifications will be replaced.',
+      confirmLabel: 'Reset Data',
+      isDestructive: false,
+      onConfirm: () => resetToDemoData(),
+    });
+  };
+
+  const handleClearAllConfirm = () => {
+    requestConfirmation({
+      title: 'Purge All Data',
+      message: 'Are you sure you want to delete all transactions and budgets? This cannot be undone.',
+      confirmLabel: 'Clear All Data',
+      isDestructive: true,
+      onConfirm: () => clearAllUserData(),
+    });
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Page Title */}
+      <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <h2 className="text-base font-semibold text-slate-900">
+          Account Settings & Preferences
+        </h2>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Manage your personal profile, preferred base currency, and data backups.
+        </p>
+      </div>
+
+      {/* Profile Form */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+          <User className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-semibold text-slate-900">
+            Profile Information
+          </h3>
+        </div>
+
+        <form onSubmit={handleProfileSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Professional Title (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Software Engineer, Designer, Freelancer"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Monthly Target Inflow / Baseline ({currency})
+              </label>
+              <input
+                type="number"
+                step="100"
+                value={incomeTarget}
+                onChange={(e) => setIncomeTarget(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end">
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"
+            >
+              {isSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
+              <span>{isSaved ? 'Saved Successfully' : 'Save Changes'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Currency Preference */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+          <Coins className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-semibold text-slate-900">
+            Base Currency & Exchange Normalization
+          </h3>
+        </div>
+
+        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+          FinTrack accurately normalizes amounts into your chosen base currency using fixed reference conversion rates, ensuring financial calculations never combine incompatible currencies into a single balance.
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {Object.values(SUPPORTED_CURRENCIES).map((cur) => {
+            const isSelected = cur.code === currency;
+            return (
+              <button
+                key={cur.code}
+                onClick={() => setCurrency(cur.code)}
+                className={`p-3 rounded-lg border text-left transition-all ${
+                  isSelected
+                    ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm font-bold text-slate-900">
+                    {cur.symbol} {cur.code}
+                  </span>
+                  {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
+                </div>
+                <span className="text-[11px] text-slate-500 block mt-1">
+                  {cur.name}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                  1 USD = {cur.rateToUSD} {cur.code}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Data Management & Backups */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+          <Database className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-semibold text-slate-900">
+            Data Portability & Management
+          </h3>
+        </div>
+
+        <div className="space-y-4 text-xs">
+          {/* Export JSON & CSV */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <div>
+              <h4 className="font-semibold text-slate-900">Export Full Backup (JSON)</h4>
+              <p className="text-slate-500 mt-0.5">
+                Download all your transactions, budgets, categories, and settings as a JSON file.
+              </p>
+            </div>
+            <button
+              onClick={exportBackupJSON}
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export JSON</span>
+            </button>
+          </div>
+
+          {/* Export CSV */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <div>
+              <h4 className="font-semibold text-slate-900">Export Transactions (CSV)</h4>
+              <p className="text-slate-500 mt-0.5">
+                Export clean CSV format compatible with Excel, Google Sheets, or Apple Numbers.
+              </p>
+            </div>
+            <button
+              onClick={exportTransactionsToCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+
+          {/* Import JSON */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <div>
+              <h4 className="font-semibold text-slate-900">Restore Backup (JSON)</h4>
+              <p className="text-slate-500 mt-0.5">
+                Upload a previous FinTrack backup file to restore records.
+              </p>
+            </div>
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportJSON}
+                accept=".json"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-500" />
+                <span>Upload JSON</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Demo Data */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-emerald-50/60 rounded-lg border border-emerald-200">
+            <div>
+              <h4 className="font-semibold text-emerald-950">Restore Demo Template</h4>
+              <p className="text-emerald-800 text-[11px] mt-0.5">
+                Reload realistic September & October 2026 data including income, rent, groceries, and budgets.
+              </p>
+            </div>
+            <button
+              onClick={handleResetDemoConfirm}
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors self-start sm:self-auto shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Reload Demo Data</span>
+            </button>
+          </div>
+
+          {/* Purge All Data */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-rose-50/60 rounded-lg border border-rose-200">
+            <div>
+              <h4 className="font-semibold text-rose-950">Clear All Financial Records</h4>
+              <p className="text-rose-800 text-[11px] mt-0.5">
+                Permanently purge all transactions and budget thresholds from this browser session.
+              </p>
+            </div>
+            <button
+              onClick={handleClearAllConfirm}
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-100 transition-colors self-start sm:self-auto shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Clear Everything</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,6 @@
+{
+  "name": "FinTrack - Personal Finance & Budget Tracker",
+  "description": "A modern personal finance web application to manage income, expenses, monthly budgets, and financial habits.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
