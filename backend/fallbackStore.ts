@@ -8,6 +8,13 @@ export interface StoredUser {
   jobTitle: string;
   preferredCurrency: string;
   isDemoUser: boolean;
+  isEmailVerified: boolean;
+  emailVerificationCode?: string;
+  emailVerificationExpires?: string;
+  passwordResetCode?: string;
+  passwordResetExpires?: string;
+  loginOtpCode?: string;
+  loginOtpExpires?: string;
   monthlyIncomeTarget: number;
   alertThresholdPercent: number;
   createdAt: string;
@@ -71,6 +78,7 @@ class FallbackStore {
         jobTitle: 'Senior Product Designer',
         preferredCurrency: 'USD',
         isDemoUser: true,
+        isEmailVerified: true,
         monthlyIncomeTarget: 8500,
         alertThresholdPercent: 80,
         createdAt: new Date().toISOString(),

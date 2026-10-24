@@ -12,6 +12,7 @@ export const DEMO_USER: User = {
   jobTitle: 'Senior Product Designer',
   preferredCurrency: 'USD',
   isDemoUser: true,
+  isEmailVerified: true,
   monthlyIncomeTarget: 8500,
   alertThresholdPercent: 80,
   createdAt: '2026-10-01T08:00:00.000Z',

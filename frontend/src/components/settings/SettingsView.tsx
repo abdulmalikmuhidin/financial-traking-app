@@ -12,18 +12,22 @@ import {
   Upload, 
   Trash2, 
   Check, 
-  Globe,
-  FileSpreadsheet,
-  RefreshCw,
-  Sparkles
+  Globe, 
+  FileSpreadsheet, 
+  RefreshCw, 
+  Sparkles,
+  ShieldCheck,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { SUPPORTED_CURRENCIES } from '../../utils/currencies';
+import { EmailVerificationModal } from '../auth/EmailVerificationModal';
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, updateProfile, dbStatus, checkDbStatus } = useAuth();
+  const { currentUser, updateProfile, dbStatus, checkDbStatus, sendVerificationCode } = useAuth();
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const { 
     currency, 
     setCurrency, 
@@ -172,9 +176,28 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('set.email', 'Email Address')}
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700">
+                  {t('set.email', 'Email Address')}
+                </label>
+                {currentUser?.isEmailVerified ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    <span>{t('auth.verifiedBadge', 'Verified')}</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sendVerificationCode();
+                      setIsVerifyModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline cursor-pointer"
+                  >
+                    <span>{t('auth.verifyNow', 'Verify Now')}</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="email"
                 value={email}
@@ -402,6 +425,12 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <EmailVerificationModal
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        emailToVerify={currentUser?.email}
+      />
     </div>
   );
 };

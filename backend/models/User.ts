@@ -8,6 +8,13 @@ export interface IUser extends Document {
   jobTitle?: string;
   preferredCurrency: string;
   isDemoUser: boolean;
+  isEmailVerified: boolean;
+  emailVerificationCode?: string;
+  emailVerificationExpires?: Date;
+  passwordResetCode?: string;
+  passwordResetExpires?: Date;
+  loginOtpCode?: string;
+  loginOtpExpires?: Date;
   monthlyIncomeTarget?: number;
   alertThresholdPercent?: number;
   createdAt: Date;
@@ -22,6 +29,13 @@ const UserSchema: Schema = new Schema(
     jobTitle: { type: String, default: 'Personal Account' },
     preferredCurrency: { type: String, default: 'USD' },
     isDemoUser: { type: Boolean, default: false },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationCode: { type: String },
+    emailVerificationExpires: { type: Date },
+    passwordResetCode: { type: String },
+    passwordResetExpires: { type: Date },
+    loginOtpCode: { type: String },
+    loginOtpExpires: { type: Date },
     monthlyIncomeTarget: { type: Number, default: 5000 },
     alertThresholdPercent: { type: Number, default: 80 },
   },

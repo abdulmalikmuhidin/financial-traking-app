@@ -16,15 +16,19 @@ import { BudgetsView } from './components/budgets/BudgetsView';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { CategoriesView } from './components/categories/CategoriesView';
 import { SettingsView } from './components/settings/SettingsView';
+import { Mail, ShieldCheck } from 'lucide-react';
 import { TransactionModal } from './components/transactions/TransactionModal';
 import { TransactionDetailModal } from './components/transactions/TransactionDetailModal';
 import { ConfirmationModal } from './components/common/ConfirmationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { AuthPage } from './components/auth/AuthPage';
 import { HomePage } from './components/home/HomePage';
+import { EmailVerificationModal } from './components/auth/EmailVerificationModal';
+import { SecurityNoticeBanner } from './components/common/SecurityNoticeBanner';
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, sendVerificationCode } = useAuth();
+  const { t } = useLanguage();
 
   // Public visitor auth sub-route: null (shows HomePage), 'login', or 'register'
   const [authView, setAuthView] = useState<'login' | 'register' | null>(null);
@@ -36,6 +40,7 @@ const MainApp: React.FC = () => {
 
   // Modal states
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [isEmailVerifyModalOpen, setIsEmailVerifyModalOpen] = useState(false);
   const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
   const [txToView, setTxToView] = useState<Transaction | null>(null);
 
@@ -94,6 +99,30 @@ const MainApp: React.FC = () => {
           onNavigate={setCurrentTab}
         />
 
+        {/* Email Verification Reminder Banner (when unverified and not demo) */}
+        {!currentUser?.isEmailVerified && !currentUser?.isDemoUser && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-8 py-2.5 flex items-center justify-between text-xs text-amber-900 transition-colors">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                {t(
+                  'auth.verifyBannerText',
+                  'Your email address is not verified yet. Verify it now to secure recovery options.'
+                )}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                sendVerificationCode();
+                setIsEmailVerifyModalOpen(true);
+              }}
+              className="ml-3 font-semibold text-amber-800 hover:text-amber-950 underline cursor-pointer whitespace-nowrap"
+            >
+              {t('auth.verifyNow', 'Verify Now')}
+            </button>
+          </div>
+        )}
+
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
           {currentTab === 'dashboard' && (
             <DashboardView
@@ -137,8 +166,15 @@ const MainApp: React.FC = () => {
         onEdit={handleEditTransaction}
       />
 
+      <EmailVerificationModal
+        isOpen={isEmailVerifyModalOpen}
+        onClose={() => setIsEmailVerifyModalOpen(false)}
+        emailToVerify={currentUser?.email}
+      />
+
       <ConfirmationModal />
       <ToastContainer />
+      <SecurityNoticeBanner />
     </div>
   );
 };
