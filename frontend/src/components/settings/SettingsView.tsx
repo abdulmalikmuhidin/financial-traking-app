@@ -1,3 +1,8 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState, useRef } from 'react';
 import { 
   User, 
@@ -5,30 +10,31 @@ import {
   Database, 
   Download, 
   Upload, 
-  RotateCcw, 
   Trash2, 
-  ShieldAlert, 
   Check, 
-  Sparkles,
-  FileSpreadsheet
+  Globe,
+  FileSpreadsheet,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { SUPPORTED_CURRENCIES } from '../../utils/currencies';
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, updateProfile, loginAsDemo, dbStatus, checkDbStatus } = useAuth();
+  const { currentUser, updateProfile, dbStatus, checkDbStatus } = useAuth();
   const { 
     currency, 
     setCurrency, 
     exportBackupJSON, 
     importBackupJSON, 
     exportTransactionsToCSV,
-    resetToDemoData, 
     clearAllUserData,
     requestConfirmation,
     showToast 
   } = useFinance();
+  const { language, setLanguage, t } = useLanguage();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +54,7 @@ export const SettingsView: React.FC = () => {
       monthlyIncomeTarget: parseFloat(incomeTarget) || 5000,
     });
     setIsSaved(true);
-    showToast('Profile information updated', 'success');
+    showToast(t('set.savedSuccess', 'Profile settings saved successfully'), 'success');
     setTimeout(() => setIsSaved(false), 2500);
   };
 
@@ -67,21 +73,11 @@ export const SettingsView: React.FC = () => {
     e.target.value = '';
   };
 
-  const handleResetDemoConfirm = () => {
-    requestConfirmation({
-      title: 'Reset to Demo Dataset',
-      message: 'This will reset all transactions, budgets, and categories back to the rich demo template. Any custom modifications will be replaced.',
-      confirmLabel: 'Reset Data',
-      isDestructive: false,
-      onConfirm: () => resetToDemoData(),
-    });
-  };
-
   const handleClearAllConfirm = () => {
     requestConfirmation({
-      title: 'Purge All Data',
-      message: 'Are you sure you want to delete all transactions and budgets? This cannot be undone.',
-      confirmLabel: 'Clear All Data',
+      title: t('set.clearAll', 'Clear All Financial Records'),
+      message: t('set.clearConfirm', 'Are you sure you want to delete all transaction and budget records? This cannot be undone.'),
+      confirmLabel: t('common.delete', 'Clear Everything'),
       isDestructive: true,
       onConfirm: () => clearAllUserData(),
     });
@@ -92,11 +88,63 @@ export const SettingsView: React.FC = () => {
       {/* Page Title */}
       <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
         <h2 className="text-base font-semibold text-slate-900">
-          Account Settings & Preferences
+          {t('set.title', 'Account Settings & Preferences')}
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Manage your personal profile, preferred base currency, and data backups.
+          {t('set.subtitle', 'Manage your personal profile, language, preferred currency, and database connection.')}
         </p>
+      </div>
+
+      {/* Language Selection Card */}
+      <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+          <Globe className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-semibold text-slate-900">
+            {t('set.language', 'Language Selection (ቋንቋ)')}
+          </h3>
+        </div>
+
+        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+          {t('set.languageDesc', 'Choose your preferred interface language. Changes take effect immediately across all pages.')}
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+              language === 'en'
+                ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-900">English (US)</span>
+              {language === 'en' && <Check className="w-4 h-4 text-emerald-600" />}
+            </div>
+            <span className="text-xs text-slate-500 mt-1 block">
+              Default application language
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLanguage('am')}
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+              language === 'am'
+                ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-900">አማርኛ (Amharic)</span>
+              {language === 'am' && <Check className="w-4 h-4 text-emerald-600" />}
+            </div>
+            <span className="text-xs text-slate-500 mt-1 block">
+              የኢትዮጵያ የስራ ቋንቋ
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Profile Form */}
@@ -104,7 +152,7 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
           <User className="w-4 h-4 text-slate-700" />
           <h3 className="text-sm font-semibold text-slate-900">
-            Profile Information
+            {t('set.profileInfo', 'Profile Information')}
           </h3>
         </div>
 
@@ -112,7 +160,7 @@ export const SettingsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Full Name
+                {t('set.fullName', 'Full Name')}
               </label>
               <input
                 type="text"
@@ -125,7 +173,7 @@ export const SettingsView: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Email Address
+                {t('set.email', 'Email Address')}
               </label>
               <input
                 type="email"
@@ -140,7 +188,7 @@ export const SettingsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Professional Title (Optional)
+                {t('set.jobTitle', 'Professional Title')}
               </label>
               <input
                 type="text"
@@ -153,7 +201,7 @@ export const SettingsView: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Monthly Target Inflow / Baseline ({currency})
+                {t('set.incomeTarget', 'Monthly Target Inflow / Baseline')} ({currency})
               </label>
               <input
                 type="number"
@@ -168,10 +216,10 @@ export const SettingsView: React.FC = () => {
           <div className="pt-2 flex items-center justify-end">
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               {isSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : null}
-              <span>{isSaved ? 'Saved Successfully' : 'Save Changes'}</span>
+              <span>{isSaved ? t('set.savedSuccess', 'Saved Successfully') : t('set.saveChanges', 'Save Changes')}</span>
             </button>
           </div>
         </form>
@@ -182,12 +230,12 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
           <Coins className="w-4 h-4 text-slate-700" />
           <h3 className="text-sm font-semibold text-slate-900">
-            Base Currency & Exchange Normalization
+            {t('set.currency', 'Base Currency & Exchange Normalization')}
           </h3>
         </div>
 
         <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-          FinTrack accurately normalizes amounts into your chosen base currency using fixed reference conversion rates, ensuring financial calculations never combine incompatible currencies into a single balance.
+          {t('set.currencyDesc', 'FinTrack normalizes amounts into your chosen base currency using fixed reference conversion rates.')}
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -197,7 +245,7 @@ export const SettingsView: React.FC = () => {
               <button
                 key={cur.code}
                 onClick={() => setCurrency(cur.code)}
-                className={`p-3 rounded-lg border text-left transition-all ${
+                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                   isSelected
                     ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
                     : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -227,15 +275,16 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-slate-700" />
             <h3 className="text-sm font-semibold text-slate-900">
-              MongoDB Database Connection
+              {t('set.mongoTitle', 'MongoDB Database Connection')}
             </h3>
           </div>
           <button
             onClick={() => checkDbStatus()}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium cursor-pointer"
             title="Refresh database connection status"
           >
-            <span>Check Status</span>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>{t('set.checkStatus', 'Check Status')}</span>
           </button>
         </div>
 
@@ -252,33 +301,16 @@ export const SettingsView: React.FC = () => {
             <div>
               <p className="font-semibold text-xs">
                 {dbStatus.isConnected
-                  ? `Connected to MongoDB Atlas (${dbStatus.databaseName || 'fintrack'})`
-                  : 'Operating in Resilient Local Storage Mode'}
+                  ? `${t('set.connected', 'Connected to MongoDB')} (${dbStatus.databaseName || 'fintrack'})`
+                  : t('set.disconnected', 'Offline Fallback Store Active')}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
                 {dbStatus.isConnected
                   ? 'Your user accounts, transactions, and budgets are securely persisted in your MongoDB database.'
-                  : 'The backend is using the built-in resilient fallback store. To connect your MongoDB database, edit the .env file in the root directory.'}
+                  : 'Operating in client-resilient mode. Update your MONGODB_URI in .env to connect your cloud cluster.'}
               </p>
-              {dbStatus.dbError && !dbStatus.isConnected && (
-                <p className="mt-1 font-mono text-[10px] text-amber-800 bg-amber-100/70 p-1.5 rounded">
-                  Status message: {dbStatus.dbError}
-                </p>
-              )}
             </div>
           </div>
-        </div>
-
-        {/* Instructions for adding MongoDB password */}
-        <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-2">
-          <h4 className="font-semibold text-slate-900 flex items-center gap-1.5">
-            <span>How to configure your MongoDB connection:</span>
-          </h4>
-          <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
-            <li>Open the <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800">.env</code> file in the project root.</li>
-            <li>Locate <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800">MONGODB_URI</code> and replace <code className="font-mono text-emerald-700 font-semibold">&lt;password&gt;</code> with your MongoDB database user password.</li>
-            <li>Save the file. FinTrack will automatically reconnect to your live database.</li>
-          </ol>
         </div>
       </div>
 
@@ -287,7 +319,7 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
           <Database className="w-4 h-4 text-slate-700" />
           <h3 className="text-sm font-semibold text-slate-900">
-            Data Portability & Management
+            {t('set.dataMgmt', 'Data Portability & Management')}
           </h3>
         </div>
 
@@ -295,41 +327,41 @@ export const SettingsView: React.FC = () => {
           {/* Export JSON & CSV */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
             <div>
-              <h4 className="font-semibold text-slate-900">Export Full Backup (JSON)</h4>
+              <h4 className="font-semibold text-slate-900">{t('set.exportJson', 'Export Full Backup (JSON)')}</h4>
               <p className="text-slate-500 mt-0.5">
                 Download all your transactions, budgets, categories, and settings as a JSON file.
               </p>
             </div>
             <button
               onClick={exportBackupJSON}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Export JSON</span>
+              <span>{t('set.exportJson', 'Export JSON')}</span>
             </button>
           </div>
 
           {/* Export CSV */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
             <div>
-              <h4 className="font-semibold text-slate-900">Export Transactions (CSV)</h4>
+              <h4 className="font-semibold text-slate-900">{t('set.exportCsv', 'Export Transactions (CSV)')}</h4>
               <p className="text-slate-500 mt-0.5">
                 Export clean CSV format compatible with Excel, Google Sheets, or Apple Numbers.
               </p>
             </div>
             <button
               onClick={exportTransactionsToCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
-              <span>Export CSV</span>
+              <span>{t('set.exportCsv', 'Export CSV')}</span>
             </button>
           </div>
 
           {/* Import JSON */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
             <div>
-              <h4 className="font-semibold text-slate-900">Restore Backup (JSON)</h4>
+              <h4 className="font-semibold text-slate-900">{t('set.restoreJson', 'Restore Backup (JSON)')}</h4>
               <p className="text-slate-500 mt-0.5">
                 Upload a previous FinTrack backup file to restore records.
               </p>
@@ -344,45 +376,28 @@ export const SettingsView: React.FC = () => {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5 text-slate-500" />
-                <span>Upload JSON</span>
+                <span>{t('set.restoreJson', 'Upload JSON')}</span>
               </button>
             </div>
-          </div>
-
-          {/* Reset Demo Data */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-emerald-50/60 rounded-lg border border-emerald-200">
-            <div>
-              <h4 className="font-semibold text-emerald-950">Restore Demo Template</h4>
-              <p className="text-emerald-800 text-[11px] mt-0.5">
-                Reload realistic September & October 2026 data including income, rent, groceries, and budgets.
-              </p>
-            </div>
-            <button
-              onClick={handleResetDemoConfirm}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors self-start sm:self-auto shrink-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Reload Demo Data</span>
-            </button>
           </div>
 
           {/* Purge All Data */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-rose-50/60 rounded-lg border border-rose-200">
             <div>
-              <h4 className="font-semibold text-rose-950">Clear All Financial Records</h4>
+              <h4 className="font-semibold text-rose-950">{t('set.clearAll', 'Clear All Financial Records')}</h4>
               <p className="text-rose-800 text-[11px] mt-0.5">
                 Permanently purge all transactions and budget thresholds from this browser session.
               </p>
             </div>
             <button
               onClick={handleClearAllConfirm}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-100 transition-colors self-start sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-100 transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-              <span>Clear Everything</span>
+              <span>{t('set.clearAll', 'Clear Everything')}</span>
             </button>
           </div>
         </div>

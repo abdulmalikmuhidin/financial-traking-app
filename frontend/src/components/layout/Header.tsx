@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewTransaction,
   onNavigate,
 }) => {
-  const { currentUser, logout, loginAsDemo } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { currency, setCurrency, exportTransactionsToCSV } = useFinance();
   const { language, setLanguage, t } = useLanguage();
 
@@ -215,9 +215,6 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="px-3.5 py-2 border-b border-slate-100">
                 <p className="text-xs font-semibold text-slate-900 truncate">{currentUser?.name}</p>
                 <p className="text-[11px] text-slate-500 truncate">{currentUser?.email}</p>
-                {currentUser?.isDemoUser && (
-                  <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Demo Account Active</p>
-                )}
               </div>
 
               <div className="py-1">
@@ -231,19 +228,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <UserIcon className="w-3.5 h-3.5 text-slate-400" />
                   <span>{t('nav.settings', 'Settings')}</span>
                 </button>
-
-                {currentUser?.isDemoUser && (
-                  <button
-                    onClick={() => {
-                      loginAsDemo();
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 text-left transition-colors"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Reset Demo Data</span>
-                  </button>
-                )}
               </div>
 
               <div className="pt-1 border-t border-slate-100">

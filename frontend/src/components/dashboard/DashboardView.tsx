@@ -147,16 +147,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h1 className="text-lg font-bold tracking-tight">
               {t('dash.welcome', 'Good day')}, {currentUser?.name?.split(' ')[0] || 'Member'}
             </h1>
-            {currentUser?.isDemoUser && (
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {t('nav.demoMode', 'Demo Workspace')}
-              </span>
-            )}
           </div>
           <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-            {currentUser?.isDemoUser
-              ? t('dash.demoBanner', 'You are viewing realistic pre-seeded financial data for October 2026. Feel free to log transactions, adjust budgets, or register your own profile.')
-              : t('dash.realBanner', 'Here is your real-time financial trajectory and budget status for October 2026.')}
+            {t('dash.realBanner', 'Here is your real-time financial trajectory and budget status for October 2026.')}
           </p>
         </div>
 

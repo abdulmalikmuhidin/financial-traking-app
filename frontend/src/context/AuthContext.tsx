@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return DEMO_USER;
+    return null;
   });
 
   const [token, setToken] = useState<string | null>(() => {

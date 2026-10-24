@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   onOpenNewTransaction,
 }) => {
-  const { currentUser, logout, loginAsDemo } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
 
   const navItems: { id: NavigationTab; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -144,12 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-semibold text-white truncate">{currentUser.name}</p>
-                    {currentUser.isDemoUser && (
-                      <span className="text-[10px] text-emerald-400/90 font-mono tracking-tight">DEMO</span>
-                    )}
-                  </div>
+                  <p className="text-xs font-semibold text-white truncate">{currentUser.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">{currentUser.email}</p>
                 </div>
               )}
@@ -158,24 +153,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={logout}
                   className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
-                  title="Sign out"
-                  aria-label="Sign out"
+                  title={t('nav.logout', 'Log out')}
+                  aria-label={t('nav.logout', 'Log out')}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               )}
-            </div>
-          )}
-
-          {!isCollapsed && currentUser?.isDemoUser && (
-            <div className="mt-2.5 px-2 py-1 text-[11px] text-slate-400 flex items-center justify-between">
-              <span>{t('nav.demoMode', 'Demo Mode Active')}</span>
-              <button
-                onClick={loginAsDemo}
-                className="text-emerald-400 hover:underline text-[10px] font-medium"
-              >
-                Reset Demo
-              </button>
             </div>
           )}
         </div>

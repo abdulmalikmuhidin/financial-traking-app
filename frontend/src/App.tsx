@@ -21,11 +21,15 @@ import { TransactionDetailModal } from './components/transactions/TransactionDet
 import { ConfirmationModal } from './components/common/ConfirmationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { AuthPage } from './components/auth/AuthPage';
+import { HomePage } from './components/home/HomePage';
 
 const MainApp: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
-  // Navigation state
+  // Public visitor auth sub-route: null (shows HomePage), 'login', or 'register'
+  const [authView, setAuthView] = useState<'login' | 'register' | null>(null);
+
+  // Navigation state for authenticated workspace
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -35,8 +39,23 @@ const MainApp: React.FC = () => {
   const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
   const [txToView, setTxToView] = useState<Transaction | null>(null);
 
+  // If unauthenticated: show the professional Public Home Page by default, or the AuthPage if Login/Register is clicked
   if (!isAuthenticated) {
-    return <AuthPage />;
+    if (authView === 'login' || authView === 'register') {
+      return (
+        <AuthPage
+          initialMode={authView}
+          onBackToHome={() => setAuthView(null)}
+        />
+      );
+    }
+
+    return (
+      <HomePage
+        onGoToAuth={(mode) => setAuthView(mode)}
+        onGoToDashboard={() => {}}
+      />
+    );
   }
 
   const handleOpenNewTransaction = () => {
