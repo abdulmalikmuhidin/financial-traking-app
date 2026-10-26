@@ -1,6 +1,20 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
+// 1. Try default .env in current working directory
 dotenv.config();
+
+// 2. Also check backend/.env in current working directory or relative to this file
+const cwdBackendEnv = path.resolve(process.cwd(), 'backend', '.env');
+if (fs.existsSync(cwdBackendEnv)) {
+  dotenv.config({ path: cwdBackendEnv, override: true });
+} else {
+  const relativeBackendEnv = path.resolve(__dirname, '../../.env');
+  if (fs.existsSync(relativeBackendEnv)) {
+    dotenv.config({ path: relativeBackendEnv, override: true });
+  }
+}
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
@@ -26,6 +40,8 @@ export const env = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   MONGODB_URI: process.env.MONGODB_URI || '',
   JWT_SECRET: jwtSecret,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  APP_URL: process.env.APP_URL || 'http://localhost:3000',
   SMTP_HOST: process.env.SMTP_HOST || '',
   SMTP_PORT: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
   SMTP_USER: process.env.SMTP_USER || '',
