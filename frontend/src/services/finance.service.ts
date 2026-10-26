@@ -7,7 +7,7 @@ export const financeApiService = {
     return request<Transaction[]>('/api/transactions');
   },
 
-  createTransaction(transactionData: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
+  createTransaction(transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'> & { userId?: string }): Promise<Transaction> {
     return request<Transaction>('/api/transactions', {
       method: 'POST',
       body: JSON.stringify(transactionData),

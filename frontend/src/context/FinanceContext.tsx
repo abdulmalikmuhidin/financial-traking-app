@@ -144,33 +144,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!token) return;
 
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        const [backendTx, backendBudgets, backendCategories] = await Promise.allSettled([
+          financeApiService.getTransactions(),
+          financeApiService.getBudgets(),
+          financeApiService.getCategories(),
+        ]);
 
-        // Fetch transactions
-        const txRes = await fetch('/api/transactions', { headers });
-        if (txRes.ok) {
-          const txData = await txRes.json();
-          if (Array.isArray(txData) && txData.length > 0) {
-            setTransactions(txData);
-          }
+        if (backendTx.status === 'fulfilled' && Array.isArray(backendTx.value) && backendTx.value.length > 0) {
+          setTransactions(backendTx.value);
         }
-
-        // Fetch budgets
-        const bRes = await fetch('/api/budgets', { headers });
-        if (bRes.ok) {
-          const bData = await bRes.json();
-          if (Array.isArray(bData) && bData.length > 0) {
-            setBudgets(bData);
-          }
+        if (backendBudgets.status === 'fulfilled' && Array.isArray(backendBudgets.value) && backendBudgets.value.length > 0) {
+          setBudgets(backendBudgets.value);
         }
-
-        // Fetch categories
-        const catRes = await fetch('/api/categories', { headers });
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          if (Array.isArray(catData) && catData.length > 0) {
-            setCategories(catData);
-          }
+        if (backendCategories.status === 'fulfilled' && Array.isArray(backendCategories.value) && backendCategories.value.length > 0) {
+          setCategories(backendCategories.value);
         }
       } catch (err) {
         console.warn('Backend data sync deferred to local cache', err);
@@ -240,16 +227,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Sync to backend if token present
     if (token) {
       try {
-        const res = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(txData),
-        });
-        if (res.ok) {
-          const saved = await res.json();
+        const saved = await financeApiService.createTransaction(txData);
+        if (saved && saved.id) {
           setTransactions((prev) => prev.map((t) => (t.id === tempId ? saved : t)));
         }
       } catch (e) {
@@ -266,14 +245,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (token) {
       try {
-        await fetch(`/api/transactions/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updates),
-        });
+        await financeApiService.updateTransaction(id, updates);
       } catch (e) {
         console.warn('Backend update failed', e);
       }
@@ -286,10 +258,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (token) {
       try {
-        await fetch(`/api/transactions/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await financeApiService.deleteTransaction(id);
       } catch (e) {
         console.warn('Backend delete failed', e);
       }
@@ -330,14 +299,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (token) {
       try {
-        await fetch('/api/budgets', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ categoryId, monthlyLimit, month, currency }),
-        });
+        await financeApiService.saveBudget({ categoryId, monthlyLimit, month, currency });
       } catch (e) {
         console.warn('Budget backend sync failed', e);
       }
@@ -350,10 +312,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (token) {
       try {
-        await fetch(`/api/budgets/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await financeApiService.deleteBudget(id);
       } catch (e) {
         console.warn('Budget backend delete failed', e);
       }
@@ -373,16 +332,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (token) {
       try {
-        const res = await fetch('/api/categories', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(catData),
-        });
-        if (res.ok) {
-          const saved = await res.json();
+        const saved = await financeApiService.createCategory(catData);
+        if (saved && saved.id) {
           setCategories((prev) => prev.map((c) => (c.id === tempId ? saved : c)));
         }
       } catch (e) {
@@ -409,10 +360,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('Category deleted', 'info');
 
     if (token) {
-      fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch((e) => console.warn('Category delete failed', e));
+      financeApiService.deleteCategory(id).catch((e) => console.warn('Category delete failed', e));
     }
     return true;
   };
