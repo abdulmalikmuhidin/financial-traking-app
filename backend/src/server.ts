@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { app } from './app';
@@ -28,10 +29,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(projectRoot, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
-    });
+    const indexHtmlPath = path.resolve(distPath, 'index.html');
+
+    if (fs.existsSync(indexHtmlPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(indexHtmlPath);
+      });
+    } else {
+      // Standalone backend API mode (e.g. Render backend with Vercel frontend)
+      app.get('/', (req, res) => {
+        res.json({
+          status: 'online',
+          service: 'FinTrack API',
+          health: '/api/health',
+          timestamp: new Date().toISOString(),
+        });
+      });
+    }
   }
 
   app.listen(PORT, '0.0.0.0', () => {
