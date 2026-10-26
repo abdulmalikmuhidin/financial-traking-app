@@ -13,6 +13,7 @@ import {
   INITIAL_DEMO_BUDGETS 
 } from '../utils/mockData';
 import { convertCurrency, formatCurrency } from '../utils/currencies';
+import { financeApiService } from '../services/finance.service';
 
 interface ConfirmationConfig {
   title: string;
