@@ -10,3 +10,4 @@
     "typecheck": "tsc --noEmit"
   }
 }
+
