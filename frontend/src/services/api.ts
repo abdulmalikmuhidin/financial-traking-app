@@ -12,6 +12,32 @@ export class ApiError extends Error {
   }
 }
 
+function getBaseUrl(): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const viteUrl = import.meta.env.VITE_API_URL;
+    const nextUrl = (import.meta.env as any).NEXT_PUBLIC_API_URL;
+    const envUrl = viteUrl || nextUrl;
+    if (envUrl && typeof envUrl === 'string') {
+      return envUrl.replace(/\/+$/, '');
+    }
+  }
+  return '';
+}
+
+export function buildUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const base = getBaseUrl();
+  if (!base) {
+    return endpoint;
+  }
+  if (base.endsWith('/api') && endpoint.startsWith('/api/')) {
+    return `${base}${endpoint.substring(4)}`;
+  }
+  return `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+}
+
 export async function request<T = any>(
   endpoint: string,
   options: RequestInit = {}
@@ -27,7 +53,9 @@ export async function request<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(endpoint, {
+  const url = buildUrl(endpoint);
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
