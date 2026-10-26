@@ -42,7 +42,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     submitPasswordReset, 
     sendOtpLogin, 
     verifyOtpLogin,
-    latestNotice 
+    latestNotice,
+    loginAsDemo
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 

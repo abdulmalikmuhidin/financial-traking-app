@@ -19,6 +19,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -26,11 +27,13 @@ import { useAuth } from '@/context/AuthContext';
 interface HomePageProps {
   onGoToAuth: (mode: 'login' | 'register') => void;
   onGoToDashboard?: () => void;
+  onExploreDemo?: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   onGoToAuth,
   onGoToDashboard,
+  onExploreDemo,
 }) => {
   const { language, setLanguage, t } = useLanguage();
   const { isAuthenticated, currentUser } = useAuth();
@@ -104,6 +107,15 @@ export const HomePage: React.FC<HomePageProps> = ({
               </button>
             ) : (
               <>
+                {onExploreDemo && (
+                  <button
+                    onClick={onExploreDemo}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t('landing.demo', 'Live Demo')}</span>
+                  </button>
+                )}
                 <button
                   onClick={() => onGoToAuth('login')}
                   className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
@@ -148,18 +160,27 @@ export const HomePage: React.FC<HomePageProps> = ({
 
             {/* CTAs */}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              {onExploreDemo && (
+                <button
+                  onClick={onExploreDemo}
+                  className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-950" />
+                  <span>{t('landing.ctaDemo', 'Explore Live Demo (1-Click)')}</span>
+                </button>
+              )}
               <button
                 onClick={() => onGoToAuth('register')}
-                className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{t('landing.ctaGetStarted', 'Create Free Account')}</span>
+                <span>{t('landing.ctaGetStarted', 'Create Account')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <a
                 href="#features"
-                className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-400 hover:text-slate-200 bg-slate-950/60 hover:bg-slate-900 border border-slate-800/80 rounded-xl transition-all flex items-center justify-center gap-2"
               >
-                <span>{t('landing.ctaExplore', 'Explore Features')}</span>
+                <span>{t('landing.ctaExplore', 'Features')}</span>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </a>
             </div>
@@ -380,12 +401,21 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 flex items-center gap-3">
+              {onExploreDemo && (
+                <button
+                  onClick={onExploreDemo}
+                  className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-950" />
+                  <span>{t('landing.demo', 'Explore Live Demo')}</span>
+                </button>
+              )}
               <button
                 onClick={() => onGoToAuth('register')}
-                className="px-6 py-2.5 text-xs sm:text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 border border-slate-800 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <span>{t('landing.ctaGetStarted', 'Create Free Account')}</span>
+                <span>{t('landing.ctaGetStarted', 'Create Account')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -436,16 +466,24 @@ export const HomePage: React.FC<HomePageProps> = ({
             {t('landing.ctaBannerSub', 'Join FinTrack today. Set up your personalized workspace in seconds.')}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {onExploreDemo && (
+              <button
+                onClick={onExploreDemo}
+                className="w-full sm:w-auto px-7 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-950" />
+                <span>{t('landing.ctaDemo', 'Explore Live Demo (1-Click)')}</span>
+              </button>
+            )}
             <button
               onClick={() => onGoToAuth('register')}
-              className="w-full sm:w-auto px-7 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors cursor-pointer"
             >
-              <span>{t('landing.ctaGetStarted', 'Create Free Account')}</span>
-              <ArrowRight className="w-4 h-4" />
+              {t('landing.ctaGetStarted', 'Create Account')}
             </button>
             <button
               onClick={() => onGoToAuth('login')}
-              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-400 hover:text-white bg-slate-950/60 hover:bg-slate-900 border border-slate-800/80 rounded-xl transition-colors cursor-pointer"
             >
               {t('landing.login', 'Sign In')}
             </button>
