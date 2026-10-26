@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { env } from '../config/env';
 
 interface SendEmailOptions {
   to: string;
@@ -19,10 +20,10 @@ export interface EmailSendResult {
  * Creates nodemailer transporter if SMTP credentials are configured in environment.
  */
 function getTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = env.SMTP_HOST;
+  const port = env.SMTP_PORT;
+  const user = env.SMTP_USER;
+  const pass = env.SMTP_PASS;
 
   if (host && user && pass) {
     return nodemailer.createTransport({
@@ -42,7 +43,7 @@ function getTransporter() {
 export async function sendAuthenticationEmail(options: SendEmailOptions): Promise<EmailSendResult> {
   const { to, subject, title, body, code, actionText } = options;
   const transporter = getTransporter();
-  const from = process.env.EMAIL_FROM || '"FinTrack Security" <noreply@fintrack.app>';
+  const from = env.EMAIL_FROM;
 
   const htmlContent = `
     <!DOCTYPE html>

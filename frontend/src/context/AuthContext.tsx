@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { DEMO_USER } from '../utils/mockData';
+import { authApiService } from '../services/auth.service';
+import { STORAGE_KEYS } from '../constants';
 
 export interface DbStatusInfo {
   isConnected: boolean;
@@ -37,15 +39,12 @@ interface AuthContextType {
   verifyOtpLogin: (email: string, code: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 }
 
-const AUTH_STORAGE_KEY = 'fintrack_auth_user';
-const TOKEN_STORAGE_KEY = 'fintrack_auth_token';
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
       if (saved) return JSON.parse(saved);
     } catch {}
     return null;
@@ -53,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [token, setToken] = useState<string | null>(() => {
     try {
-      return localStorage.getItem(TOKEN_STORAGE_KEY) || null;
+      return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || null;
     } catch {
       return null;
     }
@@ -70,11 +69,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkDbStatus = async () => {
     try {
-      const res = await fetch('/api/auth/db-status');
-      if (res.ok) {
-        const data = await res.json();
-        setDbStatus(data);
-      }
+      const data = await authApiService.getDbStatus();
+      setDbStatus(data);
     } catch {
       // Backend starting or offline
     }
@@ -89,15 +85,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       if (currentUser) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(currentUser));
       } else {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
       }
 
       if (token) {
-        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
       } else {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       }
     } catch (e) {
       console.error('Failed to sync auth state', e);
@@ -107,13 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUserProfile = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data);
-      }
+      const data = await authApiService.getMe();
+      setCurrentUser(data);
     } catch {}
   };
 
@@ -121,28 +112,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Login failed. Please check credentials.' };
-      }
-
+      const data = await authApiService.login({ email: cleanEmail, password });
       setCurrentUser(data.user);
       setToken(data.token);
       return { success: true };
-    } catch (err) {
+    } catch (err: any) {
       if (cleanEmail === DEMO_USER.email.toLowerCase() && password.length >= 6) {
         setCurrentUser(DEMO_USER);
         setToken('demo-token');
         return { success: true };
       }
-      return { success: false, error: 'Could not connect to authentication service.' };
+      return { success: false, error: err.message || 'Login failed. Please check credentials.' };
     }
   };
 
@@ -156,22 +136,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanName = name.trim();
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: cleanName,
-          email: cleanEmail,
-          password,
-          preferredCurrency: preferredCurrency || 'USD',
-        }),
+      const data = await authApiService.register({
+        name: cleanName,
+        email: cleanEmail,
+        password,
+        preferredCurrency: preferredCurrency || 'USD',
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Registration failed.' };
-      }
 
       setCurrentUser(data.user);
       setToken(data.token);
@@ -186,8 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return { success: true, previewCode: data.previewCode };
-    } catch (err) {
-      return { success: false, error: 'Network error during registration.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Registration failed.' };
     }
   };
 
@@ -200,19 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch('/api/auth/send-verification', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ email: emailToUse }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to send verification code.' };
-      }
+      const data = await authApiService.sendVerification(emailToUse);
 
       if (data.previewCode) {
         setLatestNotice({
@@ -228,8 +186,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message: data.message,
         previewCode: data.previewCode,
       };
-    } catch (err) {
-      return { success: false, error: 'Network error while sending verification email.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send verification code.' };
     }
   };
 
@@ -243,19 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ email: emailToUse, code }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to verify email.' };
-      }
+      const data = await authApiService.verifyEmail(emailToUse, code);
 
       if (data.user && currentUser && currentUser.email === data.user.email) {
         setCurrentUser({ ...currentUser, ...data.user, isEmailVerified: true });
@@ -265,8 +211,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setLatestNotice(null);
       return { success: true, message: data.message };
-    } catch (err) {
-      return { success: false, error: 'Network error during verification.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify email.' };
     }
   };
 
@@ -276,16 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to request reset.' };
-      }
+      const data = await authApiService.forgotPassword(cleanEmail);
 
       if (data.previewCode) {
         setLatestNotice({
@@ -297,8 +234,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return { success: true, message: data.message, previewCode: data.previewCode };
-    } catch (err) {
-      return { success: false, error: 'Network error while requesting password reset.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to request reset.' };
     }
   };
 
@@ -310,16 +247,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, code, newPassword }),
+      const data = await authApiService.resetPassword({
+        email: cleanEmail,
+        code,
+        newPassword,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to reset password.' };
-      }
 
       if (data.token && data.user) {
         setCurrentUser(data.user);
@@ -328,8 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setLatestNotice(null);
       return { success: true, message: data.message };
-    } catch (err) {
-      return { success: false, error: 'Network error while updating password.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to reset password.' };
     }
   };
 
@@ -339,16 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await fetch('/api/auth/send-otp-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to send one-time code.' };
-      }
+      const data = await authApiService.sendOtpLogin(cleanEmail);
 
       if (data.previewCode) {
         setLatestNotice({
@@ -360,8 +283,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return { success: true, message: data.message, previewCode: data.previewCode };
-    } catch (err) {
-      return { success: false, error: 'Network error while sending OTP login code.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send one-time code.' };
     }
   };
 
@@ -372,35 +295,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await fetch('/api/auth/verify-otp-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, code }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to verify login code.' };
-      }
+      const data = await authApiService.verifyOtpLogin(cleanEmail, code);
 
       setCurrentUser(data.user);
       setToken(data.token);
       setLatestNotice(null);
       return { success: true, message: 'Logged in successfully.' };
-    } catch (err) {
-      return { success: false, error: 'Network error while verifying login code.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify login code.' };
     }
   };
 
   const loginAsDemo = async () => {
     try {
-      const res = await fetch('/api/auth/demo', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data.user);
-        setToken(data.token);
-        return;
-      }
+      const data = await authApiService.demoLogin();
+      setCurrentUser(data.user);
+      setToken(data.token);
+      return;
     } catch {}
 
     setCurrentUser(DEMO_USER);
@@ -418,20 +329,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       if (token) {
-        const res = await fetch('/api/auth/profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updates),
-        });
-
-        if (res.ok) {
-          const updated = await res.json();
-          setCurrentUser(updated);
-          return;
-        }
+        const updated = await authApiService.updateProfile(updates);
+        setCurrentUser(updated);
+        return;
       }
     } catch {}
 

@@ -1,46 +1,22 @@
-import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User } from '../models/User';
-import { getDbStatus } from '../db';
-import { fallbackStore } from '../fallbackStore';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { sendAuthenticationEmail } from '../emailService';
+import { User, IUser } from '../models/User';
+import { getDbStatus } from '../config/database';
+import { fallbackStore } from './fallbackStore.service';
+import { sendAuthenticationEmail } from './email.service';
+import { env } from '../config/env';
 
-const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fintrack_jwt_default_secret_key_2026';
-
-const generateToken = (id: string, email: string, name: string) => {
-  return jwt.sign({ id, email, name }, JWT_SECRET, { expiresIn: '30d' });
+export const generateToken = (id: string, email: string, name: string) => {
+  return jwt.sign({ id, email, name }, env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-const generateSixDigitCode = (): string => {
+export const generateSixDigitCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// GET DB status
-router.get('/db-status', (req: Request, res: Response) => {
-  const status = getDbStatus();
-  res.json(status);
-});
-
-// POST /api/auth/register
-router.post('/register', async (req: Request, res: Response) => {
-  try {
-    const { name, email, password, preferredCurrency } = req.body;
-
-    if (!name || name.trim().length < 2) {
-      return res.status(400).json({ error: 'Full name is required (minimum 2 characters).' });
-    }
-
-    if (!email || !email.includes('@') || !email.includes('.')) {
-      return res.status(400).json({ error: 'A valid email address is required.' });
-    }
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-    }
-
+export class AuthService {
+  async register(data: { name: string; email: string; password: string; preferredCurrency?: string }) {
+    const { name, email, password, preferredCurrency } = data;
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const currency = preferredCurrency || 'USD';
@@ -49,11 +25,10 @@ router.post('/register', async (req: Request, res: Response) => {
     const verificationCode = generateSixDigitCode();
     const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-    // 1. Try MongoDB if connected
     if (status.isConnected) {
       const existingUser = await User.findOne({ email: cleanEmail });
       if (existingUser) {
-        return res.status(400).json({ error: 'An account with this email already exists.' });
+        throw { statusCode: 400, message: 'An account with this email already exists.' };
       }
 
       const newUser = new User({
@@ -71,7 +46,6 @@ router.post('/register', async (req: Request, res: Response) => {
 
       await newUser.save();
 
-      // Dispatch security verification email
       const emailRes = await sendAuthenticationEmail({
         to: cleanEmail,
         subject: 'Verify your FinTrack email address',
@@ -83,7 +57,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
       const token = generateToken(newUser._id.toString(), newUser.email, newUser.name);
 
-      return res.status(201).json({
+      return {
         token,
         previewCode: emailRes.previewCode,
         user: {
@@ -98,15 +72,15 @@ router.post('/register', async (req: Request, res: Response) => {
           alertThresholdPercent: newUser.alertThresholdPercent,
           createdAt: newUser.createdAt,
         },
-      });
+      };
     }
 
-    // 2. Fallback store
+    // Fallback store
     const existingInFallback = fallbackStore.users.find(
       (u) => u.email.toLowerCase() === cleanEmail
     );
     if (existingInFallback) {
-      return res.status(400).json({ error: 'An account with this email already exists in local registry.' });
+      throw { statusCode: 400, message: 'An account with this email already exists in local registry.' };
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -142,7 +116,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const token = generateToken(newId, cleanEmail, cleanName);
 
-    return res.status(201).json({
+    return {
       token,
       previewCode: emailRes.previewCode,
       user: {
@@ -157,40 +131,27 @@ router.post('/register', async (req: Request, res: Response) => {
         alertThresholdPercent: newStoredUser.alertThresholdPercent,
         createdAt: newStoredUser.createdAt,
       },
-    });
-  } catch (err: any) {
-    console.error('Registration error:', err);
-    return res.status(500).json({ error: 'Registration failed due to an internal server error.' });
+    };
   }
-});
 
-// POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
-    }
-
+  async login(email: string, password: string) {
     const cleanEmail = email.trim().toLowerCase();
     const status = getDbStatus();
 
-    // Check MongoDB first
     if (status.isConnected) {
       const user = await User.findOne({ email: cleanEmail });
       if (!user) {
-        return res.status(401).json({ error: 'Invalid email or password.' });
+        throw { statusCode: 401, message: 'Invalid email or password.' };
       }
 
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        return res.status(401).json({ error: 'Invalid email or password.' });
+        throw { statusCode: 401, message: 'Invalid email or password.' };
       }
 
       const token = generateToken(user._id.toString(), user.email, user.name);
 
-      return res.json({
+      return {
         token,
         user: {
           id: user._id.toString(),
@@ -204,23 +165,22 @@ router.post('/login', async (req: Request, res: Response) => {
           alertThresholdPercent: user.alertThresholdPercent,
           createdAt: user.createdAt,
         },
-      });
+      };
     }
 
-    // Check Fallback store
     const user = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!user) {
-      return res.status(401).json({ error: 'No account found with this email. Try Demo Account or register.' });
+      throw { statusCode: 401, message: 'No account found with this email. Try Demo Account or register.' };
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Incorrect password.' });
+      throw { statusCode: 401, message: 'Incorrect password.' };
     }
 
     const token = generateToken(user.id, user.email, user.name);
 
-    return res.json({
+    return {
       token,
       user: {
         id: user.id,
@@ -234,32 +194,10 @@ router.post('/login', async (req: Request, res: Response) => {
         alertThresholdPercent: user.alertThresholdPercent,
         createdAt: user.createdAt,
       },
-    });
-  } catch (err: any) {
-    console.error('Login error:', err);
-    return res.status(500).json({ error: 'Login failed due to an internal server error.' });
+    };
   }
-});
 
-// POST /api/auth/send-verification (resend verification email)
-router.post('/send-verification', async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;
-    let targetEmail = email ? email.trim().toLowerCase() : '';
-
-    // If request contains Bearer token and no email supplied
-    const authHeader = req.headers['authorization'];
-    if (!targetEmail && authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as any;
-        targetEmail = decoded.email.toLowerCase();
-      } catch {}
-    }
-
-    if (!targetEmail) {
-      return res.status(400).json({ error: 'Email address is required.' });
-    }
-
+  async sendVerification(targetEmail: string) {
     const verificationCode = generateSixDigitCode();
     const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000);
     const status = getDbStatus();
@@ -267,7 +205,7 @@ router.post('/send-verification', async (req: Request, res: Response) => {
     if (status.isConnected) {
       const user = await User.findOne({ email: targetEmail });
       if (!user) {
-        return res.status(404).json({ error: 'No user account found for this email.' });
+        throw { statusCode: 404, message: 'No user account found for this email.' };
       }
 
       user.emailVerificationCode = verificationCode;
@@ -283,16 +221,16 @@ router.post('/send-verification', async (req: Request, res: Response) => {
         actionText: 'Verification Code',
       });
 
-      return res.json({
+      return {
         success: true,
         message: 'A fresh verification code has been dispatched to your email.',
         previewCode: emailRes.previewCode,
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === targetEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'No user account found for this email.' });
+      throw { statusCode: 404, message: 'No user account found for this email.' };
     }
 
     fallbackUser.emailVerificationCode = verificationCode;
@@ -307,46 +245,24 @@ router.post('/send-verification', async (req: Request, res: Response) => {
       actionText: 'Verification Code',
     });
 
-    return res.json({
+    return {
       success: true,
       message: 'A fresh verification code has been dispatched to your email.',
       previewCode: emailRes.previewCode,
-    });
-  } catch (err: any) {
-    console.error('Send verification error:', err);
-    return res.status(500).json({ error: 'Failed to send verification email.' });
+    };
   }
-});
 
-// POST /api/auth/verify-email
-router.post('/verify-email', async (req: Request, res: Response) => {
-  try {
-    const { email, code } = req.body;
-    let targetEmail = email ? email.trim().toLowerCase() : '';
-
-    const authHeader = req.headers['authorization'];
-    if (!targetEmail && authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as any;
-        targetEmail = decoded.email.toLowerCase();
-      } catch {}
-    }
-
-    if (!targetEmail || !code) {
-      return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
-    }
-
-    const cleanCode = code.toString().trim();
+  async verifyEmail(targetEmail: string, cleanCode: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const user = await User.findOne({ email: targetEmail });
       if (!user) {
-        return res.status(404).json({ error: 'User account not found.' });
+        throw { statusCode: 404, message: 'User account not found.' };
       }
 
       if (user.isEmailVerified) {
-        return res.json({
+        return {
           success: true,
           message: 'Email is already verified.',
           user: {
@@ -356,15 +272,15 @@ router.post('/verify-email', async (req: Request, res: Response) => {
             isEmailVerified: true,
             preferredCurrency: user.preferredCurrency,
           },
-        });
+        };
       }
 
       if (!user.emailVerificationCode || user.emailVerificationCode !== cleanCode) {
-        return res.status(400).json({ error: 'Invalid verification code. Please check your email.' });
+        throw { statusCode: 400, message: 'Invalid verification code. Please check your email.' };
       }
 
       if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
-        return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+        throw { statusCode: 400, message: 'Verification code has expired. Please request a new one.' };
       }
 
       user.isEmailVerified = true;
@@ -372,7 +288,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
       user.emailVerificationExpires = undefined;
       await user.save();
 
-      return res.json({
+      return {
         success: true,
         message: 'Email address verified successfully!',
         user: {
@@ -387,16 +303,16 @@ router.post('/verify-email', async (req: Request, res: Response) => {
           alertThresholdPercent: user.alertThresholdPercent,
           createdAt: user.createdAt,
         },
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === targetEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'User account not found.' });
+      throw { statusCode: 404, message: 'User account not found.' };
     }
 
     if (fallbackUser.isEmailVerified) {
-      return res.json({
+      return {
         success: true,
         message: 'Email is already verified.',
         user: {
@@ -406,22 +322,22 @@ router.post('/verify-email', async (req: Request, res: Response) => {
           isEmailVerified: true,
           preferredCurrency: fallbackUser.preferredCurrency,
         },
-      });
+      };
     }
 
     if (!fallbackUser.emailVerificationCode || fallbackUser.emailVerificationCode !== cleanCode) {
-      return res.status(400).json({ error: 'Invalid verification code. Please check your email.' });
+      throw { statusCode: 400, message: 'Invalid verification code. Please check your email.' };
     }
 
     if (fallbackUser.emailVerificationExpires && new Date() > new Date(fallbackUser.emailVerificationExpires)) {
-      return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+      throw { statusCode: 400, message: 'Verification code has expired. Please request a new one.' };
     }
 
     fallbackUser.isEmailVerified = true;
     fallbackUser.emailVerificationCode = undefined;
     fallbackUser.emailVerificationExpires = undefined;
 
-    return res.json({
+    return {
       success: true,
       message: 'Email address verified successfully!',
       user: {
@@ -436,22 +352,10 @@ router.post('/verify-email', async (req: Request, res: Response) => {
         alertThresholdPercent: fallbackUser.alertThresholdPercent,
         createdAt: fallbackUser.createdAt,
       },
-    });
-  } catch (err: any) {
-    console.error('Verify email error:', err);
-    return res.status(500).json({ error: 'Failed to verify email address.' });
+    };
   }
-});
 
-// POST /api/auth/forgot-password (request password reset code)
-router.post('/forgot-password', async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'A valid email address is required.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
+  async forgotPassword(cleanEmail: string) {
     const resetCode = generateSixDigitCode();
     const resetExpiry = new Date(Date.now() + 15 * 60 * 1000);
     const status = getDbStatus();
@@ -459,7 +363,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     if (status.isConnected) {
       const user = await User.findOne({ email: cleanEmail });
       if (!user) {
-        return res.status(404).json({ error: 'No account registered with this email address.' });
+        throw { statusCode: 404, message: 'No account registered with this email address.' };
       }
 
       user.passwordResetCode = resetCode;
@@ -475,16 +379,16 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
         actionText: 'Password Reset Code',
       });
 
-      return res.json({
+      return {
         success: true,
         message: 'Password reset code dispatched to your email.',
         previewCode: emailRes.previewCode,
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'No account registered with this email address.' });
+      throw { statusCode: 404, message: 'No account registered with this email address.' };
     }
 
     fallbackUser.passwordResetCode = resetCode;
@@ -499,49 +403,30 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       actionText: 'Password Reset Code',
     });
 
-    return res.json({
+    return {
       success: true,
       message: 'Password reset code dispatched to your email.',
       previewCode: emailRes.previewCode,
-    });
-  } catch (err: any) {
-    console.error('Forgot password error:', err);
-    return res.status(500).json({ error: 'Failed to process password reset request.' });
+    };
   }
-});
 
-// POST /api/auth/reset-password (submit code & new password)
-router.post('/reset-password', async (req: Request, res: Response) => {
-  try {
-    const { email, code, newPassword } = req.body;
-
-    if (!email || !code || !newPassword) {
-      return res.status(400).json({ error: 'Email, reset code, and new password are required.' });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanCode = code.toString().trim();
+  async resetPassword(cleanEmail: string, cleanCode: string, newPassword: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const user = await User.findOne({ email: cleanEmail });
       if (!user) {
-        return res.status(404).json({ error: 'No account found with this email.' });
+        throw { statusCode: 404, message: 'No account found with this email.' };
       }
 
       if (!user.passwordResetCode || user.passwordResetCode !== cleanCode) {
-        return res.status(400).json({ error: 'Invalid reset code. Please check your email.' });
+        throw { statusCode: 400, message: 'Invalid reset code. Please check your email.' };
       }
 
       if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
-        return res.status(400).json({ error: 'Reset code has expired. Please request a new one.' });
+        throw { statusCode: 400, message: 'Reset code has expired. Please request a new one.' };
       }
 
-      // Update password
       user.password = newPassword;
       user.passwordResetCode = undefined;
       user.passwordResetExpires = undefined;
@@ -549,7 +434,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
       const token = generateToken(user._id.toString(), user.email, user.name);
 
-      return res.json({
+      return {
         success: true,
         message: 'Password has been successfully updated!',
         token,
@@ -565,20 +450,20 @@ router.post('/reset-password', async (req: Request, res: Response) => {
           alertThresholdPercent: user.alertThresholdPercent,
           createdAt: user.createdAt,
         },
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'No account found with this email.' });
+      throw { statusCode: 404, message: 'No account found with this email.' };
     }
 
     if (!fallbackUser.passwordResetCode || fallbackUser.passwordResetCode !== cleanCode) {
-      return res.status(400).json({ error: 'Invalid reset code. Please check your email.' });
+      throw { statusCode: 400, message: 'Invalid reset code. Please check your email.' };
     }
 
     if (fallbackUser.passwordResetExpires && new Date() > new Date(fallbackUser.passwordResetExpires)) {
-      return res.status(400).json({ error: 'Reset code has expired. Please request a new one.' });
+      throw { statusCode: 400, message: 'Reset code has expired. Please request a new one.' };
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -588,7 +473,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     const token = generateToken(fallbackUser.id, fallbackUser.email, fallbackUser.name);
 
-    return res.json({
+    return {
       success: true,
       message: 'Password has been successfully updated!',
       token,
@@ -604,22 +489,10 @@ router.post('/reset-password', async (req: Request, res: Response) => {
         alertThresholdPercent: fallbackUser.alertThresholdPercent,
         createdAt: fallbackUser.createdAt,
       },
-    });
-  } catch (err: any) {
-    console.error('Reset password error:', err);
-    return res.status(500).json({ error: 'Failed to reset password.' });
+    };
   }
-});
 
-// POST /api/auth/send-otp-login (passwordless login code)
-router.post('/send-otp-login', async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'A valid email address is required.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
+  async sendOtpLogin(cleanEmail: string) {
     const otpCode = generateSixDigitCode();
     const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
     const status = getDbStatus();
@@ -627,7 +500,7 @@ router.post('/send-otp-login', async (req: Request, res: Response) => {
     if (status.isConnected) {
       const user = await User.findOne({ email: cleanEmail });
       if (!user) {
-        return res.status(404).json({ error: 'No account found for this email. Please create an account first.' });
+        throw { statusCode: 404, message: 'No account found for this email. Please create an account first.' };
       }
 
       user.loginOtpCode = otpCode;
@@ -643,16 +516,16 @@ router.post('/send-otp-login', async (req: Request, res: Response) => {
         actionText: 'One-Time Login Code',
       });
 
-      return res.json({
+      return {
         success: true,
         message: 'One-time login code sent to your email.',
         previewCode: emailRes.previewCode,
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'No account found for this email. Please create an account first.' });
+      throw { statusCode: 404, message: 'No account found for this email. Please create an account first.' };
     }
 
     fallbackUser.loginOtpCode = otpCode;
@@ -667,44 +540,30 @@ router.post('/send-otp-login', async (req: Request, res: Response) => {
       actionText: 'One-Time Login Code',
     });
 
-    return res.json({
+    return {
       success: true,
       message: 'One-time login code sent to your email.',
       previewCode: emailRes.previewCode,
-    });
-  } catch (err: any) {
-    console.error('Send OTP login error:', err);
-    return res.status(500).json({ error: 'Failed to send one-time login code.' });
+    };
   }
-});
 
-// POST /api/auth/verify-otp-login (submit code to login)
-router.post('/verify-otp-login', async (req: Request, res: Response) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ error: 'Email and 6-digit login code are required.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanCode = code.toString().trim();
+  async verifyOtpLogin(cleanEmail: string, cleanCode: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const user = await User.findOne({ email: cleanEmail });
       if (!user) {
-        return res.status(404).json({ error: 'Account not found.' });
+        throw { statusCode: 404, message: 'Account not found.' };
       }
 
       if (!user.loginOtpCode || user.loginOtpCode !== cleanCode) {
-        return res.status(400).json({ error: 'Invalid login code. Please check your email.' });
+        throw { statusCode: 400, message: 'Invalid login code. Please check your email.' };
       }
 
       if (user.loginOtpExpires && new Date() > user.loginOtpExpires) {
-        return res.status(400).json({ error: 'Login code has expired. Please request a new one.' });
+        throw { statusCode: 400, message: 'Login code has expired. Please request a new one.' };
       }
 
-      // Mark email as verified and clear OTP
       user.isEmailVerified = true;
       user.loginOtpCode = undefined;
       user.loginOtpExpires = undefined;
@@ -712,7 +571,7 @@ router.post('/verify-otp-login', async (req: Request, res: Response) => {
 
       const token = generateToken(user._id.toString(), user.email, user.name);
 
-      return res.json({
+      return {
         success: true,
         token,
         user: {
@@ -727,20 +586,20 @@ router.post('/verify-otp-login', async (req: Request, res: Response) => {
           alertThresholdPercent: user.alertThresholdPercent,
           createdAt: user.createdAt,
         },
-      });
+      };
     }
 
     const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!fallbackUser) {
-      return res.status(404).json({ error: 'Account not found.' });
+      throw { statusCode: 404, message: 'Account not found.' };
     }
 
     if (!fallbackUser.loginOtpCode || fallbackUser.loginOtpCode !== cleanCode) {
-      return res.status(400).json({ error: 'Invalid login code. Please check your email.' });
+      throw { statusCode: 400, message: 'Invalid login code. Please check your email.' };
     }
 
     if (fallbackUser.loginOtpExpires && new Date() > new Date(fallbackUser.loginOtpExpires)) {
-      return res.status(400).json({ error: 'Login code has expired. Please request a new one.' });
+      throw { statusCode: 400, message: 'Login code has expired. Please request a new one.' };
     }
 
     fallbackUser.isEmailVerified = true;
@@ -749,7 +608,7 @@ router.post('/verify-otp-login', async (req: Request, res: Response) => {
 
     const token = generateToken(fallbackUser.id, fallbackUser.email, fallbackUser.name);
 
-    return res.json({
+    return {
       success: true,
       token,
       user: {
@@ -764,46 +623,34 @@ router.post('/verify-otp-login', async (req: Request, res: Response) => {
         alertThresholdPercent: fallbackUser.alertThresholdPercent,
         createdAt: fallbackUser.createdAt,
       },
-    });
-  } catch (err: any) {
-    console.error('Verify OTP login error:', err);
-    return res.status(500).json({ error: 'Failed to verify login code.' });
+    };
   }
-});
 
-// POST /api/auth/demo
-router.post('/demo', async (req: Request, res: Response) => {
-  const demoUser = fallbackStore.users.find((u) => u.isDemoUser) || {
-    id: 'user-demo-alex',
-    name: 'Alex Morgan',
-    email: 'alex.morgan@fintrack.app',
-    jobTitle: 'Senior Product Designer',
-    preferredCurrency: 'USD',
-    isDemoUser: true,
-    isEmailVerified: true,
-    monthlyIncomeTarget: 8500,
-    alertThresholdPercent: 80,
-    createdAt: '2026-01-15T09:00:00Z',
-  };
+  getDemoUser() {
+    const demoUser = fallbackStore.users.find((u) => u.isDemoUser) || {
+      id: 'user-demo-alex',
+      name: 'Alex Morgan',
+      email: 'alex.morgan@fintrack.app',
+      jobTitle: 'Senior Product Designer',
+      preferredCurrency: 'USD',
+      isDemoUser: true,
+      isEmailVerified: true,
+      monthlyIncomeTarget: 8500,
+      alertThresholdPercent: 80,
+      createdAt: '2026-01-15T09:00:00Z',
+    };
 
-  const token = generateToken(demoUser.id, demoUser.email, demoUser.name);
+    const token = generateToken(demoUser.id, demoUser.email, demoUser.name);
+    return { token, user: demoUser };
+  }
 
-  return res.json({
-    token,
-    user: demoUser,
-  });
-});
-
-// GET /api/auth/me
-router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
+  async getMe(userId: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const user = await User.findById(userId).select('-password');
       if (user) {
-        return res.json({
+        return {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
@@ -814,16 +661,16 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => 
           monthlyIncomeTarget: user.monthlyIncomeTarget,
           alertThresholdPercent: user.alertThresholdPercent,
           createdAt: user.createdAt,
-        });
+        };
       }
     }
 
     const user = fallbackStore.users.find((u) => u.id === userId);
     if (!user) {
-      return res.status(404).json({ error: 'User profile not found.' });
+      throw { statusCode: 404, message: 'User profile not found.' };
     }
 
-    return res.json({
+    return {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -834,17 +681,11 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => 
       monthlyIncomeTarget: user.monthlyIncomeTarget,
       alertThresholdPercent: user.alertThresholdPercent,
       createdAt: user.createdAt,
-    });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve profile.' });
+    };
   }
-});
 
-// PUT /api/auth/profile
-router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const { name, jobTitle, preferredCurrency, monthlyIncomeTarget, alertThresholdPercent } = req.body;
+  async updateProfile(userId: string, data: { name?: string; jobTitle?: string; preferredCurrency?: string; monthlyIncomeTarget?: number; alertThresholdPercent?: number }) {
+    const { name, jobTitle, preferredCurrency, monthlyIncomeTarget, alertThresholdPercent } = data;
     const status = getDbStatus();
 
     if (status.isConnected) {
@@ -861,7 +702,7 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response
       ).select('-password');
 
       if (updated) {
-        return res.json({
+        return {
           id: updated._id.toString(),
           name: updated.name,
           email: updated.email,
@@ -872,7 +713,7 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response
           monthlyIncomeTarget: updated.monthlyIncomeTarget,
           alertThresholdPercent: updated.alertThresholdPercent,
           createdAt: updated.createdAt,
-        });
+        };
       }
     }
 
@@ -885,7 +726,7 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response
       if (alertThresholdPercent !== undefined) fallbackStore.users[idx].alertThresholdPercent = alertThresholdPercent;
 
       const u = fallbackStore.users[idx];
-      return res.json({
+      return {
         id: u.id,
         name: u.name,
         email: u.email,
@@ -896,13 +737,11 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response
         monthlyIncomeTarget: u.monthlyIncomeTarget,
         alertThresholdPercent: u.alertThresholdPercent,
         createdAt: u.createdAt,
-      });
+      };
     }
 
-    return res.status(404).json({ error: 'User profile not found.' });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to update profile.' });
+    throw { statusCode: 404, message: 'User profile not found.' };
   }
-});
+}
 
-export default router;
+export const authService = new AuthService();

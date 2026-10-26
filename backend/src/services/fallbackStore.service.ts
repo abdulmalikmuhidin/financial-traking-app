@@ -55,7 +55,7 @@ export interface StoredCategory {
   userId?: string;
 }
 
-class FallbackStore {
+export class FallbackStore {
   public users: StoredUser[] = [];
   public transactions: StoredTransaction[] = [];
   public budgets: StoredBudget[] = [];

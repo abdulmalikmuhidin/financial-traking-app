@@ -1,13 +1,11 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { env } from './env';
 
 let isConnected = false;
 let dbError: string | null = null;
 
 export const connectToDatabase = async (): Promise<boolean> => {
-  const uri = process.env.MONGODB_URI;
+  const uri = env.MONGODB_URI;
 
   if (!uri || uri.includes('<password>')) {
     dbError = 'MONGODB_URI contains placeholder <password> or is not configured.';

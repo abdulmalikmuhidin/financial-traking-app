@@ -1,52 +1,47 @@
-import { Router, Response } from 'express';
 import { TransactionModel } from '../models/Transaction';
-import { getDbStatus } from '../db';
-import { fallbackStore } from '../fallbackStore';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { getDbStatus } from '../config/database';
+import { fallbackStore } from './fallbackStore.service';
 
-const router = Router();
+export interface CreateTransactionDto {
+  type: 'income' | 'expense';
+  amount: number;
+  currency?: string;
+  categoryId: string;
+  date: string;
+  description: string;
+  merchant?: string;
+  paymentMethod?: string;
+  notes?: string;
+  isRecurring?: boolean;
+}
 
-// Apply auth to all transaction endpoints
-router.use(authenticateToken);
-
-// GET /api/transactions
-router.get('/', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
+export class TransactionService {
+  async getAll(userId: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const docs = await TransactionModel.find({ userId }).sort({ date: -1 });
-      return res.json(
-        docs.map((d) => ({
-          id: d._id.toString(),
-          userId: d.userId,
-          type: d.type,
-          amount: d.amount,
-          currency: d.currency,
-          categoryId: d.categoryId,
-          date: d.date,
-          description: d.description,
-          merchant: d.merchant,
-          paymentMethod: d.paymentMethod,
-          notes: d.notes,
-          isRecurring: d.isRecurring,
-          createdAt: d.createdAt,
-        }))
-      );
+      return docs.map((d) => ({
+        id: d._id.toString(),
+        userId: d.userId,
+        type: d.type,
+        amount: d.amount,
+        currency: d.currency,
+        categoryId: d.categoryId,
+        date: d.date,
+        description: d.description,
+        merchant: d.merchant,
+        paymentMethod: d.paymentMethod,
+        notes: d.notes,
+        isRecurring: d.isRecurring,
+        createdAt: d.createdAt,
+      }));
     }
 
-    const items = fallbackStore.transactions.filter((t) => t.userId === userId);
-    return res.json(items);
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve transactions.' });
+    return fallbackStore.transactions.filter((t) => t.userId === userId);
   }
-});
 
-// POST /api/transactions
-router.post('/', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
+  async create(userId: string, data: CreateTransactionDto) {
     const {
       type,
       amount,
@@ -58,11 +53,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       paymentMethod,
       notes,
       isRecurring,
-    } = req.body;
-
-    if (!amount || amount <= 0 || !description || !categoryId || !date) {
-      return res.status(400).json({ error: 'Missing required transaction fields.' });
-    }
+    } = data;
 
     const status = getDbStatus();
 
@@ -70,7 +61,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       const newTx = new TransactionModel({
         userId,
         type,
-        amount: parseFloat(amount),
+        amount: typeof amount === 'string' ? parseFloat(amount) : amount,
         currency: currency || 'USD',
         categoryId,
         date,
@@ -83,7 +74,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
       await newTx.save();
 
-      return res.status(201).json({
+      return {
         id: newTx._id.toString(),
         userId: newTx.userId,
         type: newTx.type,
@@ -97,14 +88,14 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         notes: newTx.notes,
         isRecurring: newTx.isRecurring,
         createdAt: newTx.createdAt,
-      });
+      };
     }
 
     const createdItem = {
       id: `tx-${Date.now()}`,
       userId,
       type,
-      amount: parseFloat(amount),
+      amount: typeof amount === 'string' ? parseFloat(amount) : amount,
       currency: currency || 'USD',
       categoryId,
       date,
@@ -117,18 +108,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     };
 
     fallbackStore.transactions.unshift(createdItem);
-    return res.status(201).json(createdItem);
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to create transaction.' });
+    return createdItem;
   }
-});
 
-// PUT /api/transactions/:id
-router.put('/:id', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const { id } = req.params;
-    const updates = req.body;
+  async update(userId: string, id: string, updates: any) {
     const status = getDbStatus();
 
     if (status.isConnected) {
@@ -139,10 +122,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       );
 
       if (!updated) {
-        return res.status(404).json({ error: 'Transaction not found or unauthorized.' });
+        throw { statusCode: 404, message: 'Transaction not found or unauthorized.' };
       }
 
-      return res.json({
+      return {
         id: updated._id.toString(),
         userId: updated.userId,
         type: updated.type,
@@ -156,12 +139,12 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         notes: updated.notes,
         isRecurring: updated.isRecurring,
         createdAt: updated.createdAt,
-      });
+      };
     }
 
     const idx = fallbackStore.transactions.findIndex((t) => t.id === id && t.userId === userId);
     if (idx === -1) {
-      return res.status(404).json({ error: 'Transaction not found.' });
+      throw { statusCode: 404, message: 'Transaction not found.' };
     }
 
     fallbackStore.transactions[idx] = {
@@ -169,37 +152,28 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       ...updates,
     };
 
-    return res.json(fallbackStore.transactions[idx]);
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to update transaction.' });
+    return fallbackStore.transactions[idx];
   }
-});
 
-// DELETE /api/transactions/:id
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const { id } = req.params;
+  async delete(userId: string, id: string) {
     const status = getDbStatus();
 
     if (status.isConnected) {
       const deleted = await TransactionModel.findOneAndDelete({ _id: id, userId });
       if (!deleted) {
-        return res.status(404).json({ error: 'Transaction not found or unauthorized.' });
+        throw { statusCode: 404, message: 'Transaction not found or unauthorized.' };
       }
-      return res.json({ success: true, message: 'Transaction deleted.' });
+      return { success: true, message: 'Transaction deleted.' };
     }
 
     const idx = fallbackStore.transactions.findIndex((t) => t.id === id && t.userId === userId);
     if (idx === -1) {
-      return res.status(404).json({ error: 'Transaction not found.' });
+      throw { statusCode: 404, message: 'Transaction not found.' };
     }
 
     fallbackStore.transactions.splice(idx, 1);
-    return res.json({ success: true, message: 'Transaction deleted.' });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to delete transaction.' });
+    return { success: true, message: 'Transaction deleted.' };
   }
-});
+}
 
-export default router;
+export const transactionService = new TransactionService();
