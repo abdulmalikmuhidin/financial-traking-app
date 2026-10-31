@@ -115,7 +115,10 @@ export const SettingsView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
           <button
             type="button"
-            onClick={() => setLanguage('en')}
+            onClick={() => {
+              setLanguage('en');
+              if (currency === 'ETB') setCurrency('USD');
+            }}
             className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               language === 'en'
                 ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
@@ -133,7 +136,10 @@ export const SettingsView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setLanguage('am')}
+            onClick={() => {
+              setLanguage('am');
+              if (currency === 'USD') setCurrency('ETB');
+            }}
             className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               language === 'am'
                 ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'

@@ -46,7 +46,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     convertAmount,
     requestConfirmation,
   } = useFinance();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Filters & Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,7 +171,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             {t('tx.filteredIncome', 'Filtered Income')}
           </span>
           <span className="text-xl font-bold font-mono text-emerald-600 mt-1 block">
-            +{formatCurrency(filteredIncome, currency)}
+            +{formatCurrency(filteredIncome, currency, true, language)}
           </span>
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
@@ -179,7 +179,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             {t('tx.filteredExpenses', 'Filtered Expenses')}
           </span>
           <span className="text-xl font-bold font-mono text-rose-600 mt-1 block">
-            -{formatCurrency(filteredExpense, currency)}
+            -{formatCurrency(filteredExpense, currency, true, language)}
           </span>
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
@@ -191,7 +191,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               filteredIncome - filteredExpense >= 0 ? 'text-slate-900' : 'text-rose-600'
             }`}
           >
-            {formatCurrency(filteredIncome - filteredExpense, currency)}
+            {formatCurrency(filteredIncome - filteredExpense, currency, true, language)}
           </span>
         </div>
       </div>
@@ -347,7 +347,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
                       {/* Date */}
                       <td className="py-3.5 px-4 font-mono text-slate-600 whitespace-nowrap">
-                        {formatDate(tx.date)}
+                        {formatDate(tx.date, language)}
                       </td>
 
                       {/* Method */}
@@ -358,7 +358,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                       {/* Amount */}
                       <td className="py-3.5 px-4 text-right font-mono font-semibold whitespace-nowrap">
                         <span className={isIncome ? 'text-emerald-600' : 'text-slate-900'}>
-                          {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+                          {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency, true, language)}
                         </span>
                       </td>
 

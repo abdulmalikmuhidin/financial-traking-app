@@ -28,7 +28,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const { transactions, budgets, categories, currency, convertAmount } = useFinance();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const currentMonth = '2026-10';
   const previousMonth = '2026-09';
@@ -140,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner / Demo Notification */}
+      {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -251,7 +251,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
-                {t('dash.peak', 'Peak')}: {formatCurrency(maxDaySpend, currency)}
+                {t('dash.peak', 'Peak')}: {formatCurrency(maxDaySpend, currency, true, language)}
               </span>
             </div>
 
@@ -269,7 +269,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   >
                     {hasSpend && (
                       <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded shadow-sm">
-                        Oct {day}: {formatCurrency(amount, currency)}
+                        {language === 'am' ? 'ጥቅምት' : 'Oct'} {day}: {formatCurrency(amount, currency, true, language)}
                       </div>
                     )}
 
@@ -291,7 +291,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-            <span>{t('dash.monthTotal', 'Current Month Total')}: <strong className="text-slate-800 font-mono">{formatCurrency(stats.currentMonthExpense, currency)}</strong></span>
+            <span>{t('dash.monthTotal', 'Current Month Total')}: <strong className="text-slate-800 font-mono">{formatCurrency(stats.currentMonthExpense, currency, true, language)}</strong></span>
             <button
               onClick={() => onNavigate('analytics')}
               className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 transition-colors"
@@ -436,7 +436,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="flex items-center gap-2 text-[11px] text-slate-500">
                         <span>{category?.name || 'Uncategorized'}</span>
                         <span aria-hidden="true">·</span>
-                        <span className="font-mono">{formatDate(tx.date)}</span>
+                        <span className="font-mono">{formatDate(tx.date, language)}</span>
                         {tx.merchant && (
                           <>
                             <span aria-hidden="true">·</span>
@@ -453,10 +453,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         isExpense ? 'text-slate-900' : 'text-emerald-600'
                       }`}
                     >
-                      {isExpense ? '-' : '+'}{formatCurrency(converted, currency)}
+                      {isExpense ? '-' : '+'}{formatCurrency(tx.amount, tx.currency, true, language)}
                     </span>
                     <span className="block text-[10px] text-slate-400">
-                      {tx.paymentMethod}
+                      {tx.currency !== currency
+                        ? `≈ ${formatCurrency(converted, currency, true, language)}`
+                        : tx.paymentMethod}
                     </span>
                   </div>
                 </div>

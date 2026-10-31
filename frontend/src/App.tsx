@@ -26,7 +26,7 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { SecurityNoticeBanner } from "./components/common/SecurityNoticeBanner";
 
 const MainApp: React.FC = () => {
-  const { currentUser, isAuthenticated, sendVerificationCode, loginAsDemo } = useAuth();
+  const { currentUser, isAuthenticated, sendVerificationCode } = useAuth();
   const { t } = useLanguage();
 
   // Public visitor auth sub-route: null (shows HomePage), 'login', or 'register'
@@ -58,7 +58,6 @@ const MainApp: React.FC = () => {
       <HomePage
         onGoToAuth={(mode) => setAuthView(mode)}
         onGoToDashboard={() => setCurrentTab("dashboard")}
-        onExploreDemo={loginAsDemo}
       />
     );
   }

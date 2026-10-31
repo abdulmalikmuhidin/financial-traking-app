@@ -45,6 +45,28 @@ export const SUPPORTED_CURRENCIES: Record<string, Currency> = {
   },
 };
 
+export interface FormatCurrencyOptions {
+  showSymbol?: boolean;
+  locale?: string;
+  showPlus?: boolean;
+}
+
+/**
+ * Returns the currently active application locale ('en' or 'am').
+ * Persisted in localStorage and synchronized with <html lang="...">.
+ */
+export function getActiveLocale(): 'en' | 'am' {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('fintrack_lang');
+      if (stored === 'am' || stored === 'en') return stored;
+      const htmlLang = document.documentElement.lang;
+      if (htmlLang === 'am' || htmlLang === 'en') return htmlLang;
+    } catch {}
+  }
+  return 'en';
+}
+
 /**
  * Converts an amount from one currency to another using predefined conversion rates.
  */
@@ -66,28 +88,67 @@ export function convertCurrency(
 }
 
 /**
- * Formats a monetary amount with currency symbol and tabular decimals.
+ * Formats a monetary amount with currency symbol and tabular decimals
+ * according to application locale and currency rules.
+ *
+ * English (USD): Symbol '$' before the amount, e.g. "$1,250.00"
+ * Amharic (ETB): Symbol 'ብር' after the amount, e.g. "1,250.00 ብር"
  */
 export function formatCurrency(
   amount: number,
-  currencyCode: string = 'USD',
-  showSymbol: boolean = true
+  currencyCode?: string,
+  optionsOrShowSymbol: boolean | FormatCurrencyOptions = true,
+  localeArg?: string
 ): string {
-  const currency = SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.USD;
-  const isJpy = currencyCode === 'JPY';
-  
-  const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: isJpy ? 0 : 2,
-    maximumFractionDigits: isJpy ? 0 : 2,
-  }).format(Math.abs(amount));
+  let showSymbol = true;
+  let showPlus = false;
+  let locale = localeArg;
 
-  const sign = amount < 0 ? '-' : '';
-
-  if (!showSymbol) {
-    return `${sign}${formatted}`;
+  if (typeof optionsOrShowSymbol === 'boolean') {
+    showSymbol = optionsOrShowSymbol;
+  } else if (typeof optionsOrShowSymbol === 'object' && optionsOrShowSymbol !== null) {
+    if (optionsOrShowSymbol.showSymbol !== undefined) showSymbol = optionsOrShowSymbol.showSymbol;
+    if (optionsOrShowSymbol.showPlus !== undefined) showPlus = optionsOrShowSymbol.showPlus;
+    if (optionsOrShowSymbol.locale) locale = optionsOrShowSymbol.locale;
   }
 
-  return `${sign}${currency.symbol}${formatted}`;
+  const activeLocale = locale || getActiveLocale();
+  const effectiveCurrencyCode = currencyCode || (activeLocale === 'am' ? 'ETB' : 'USD');
+  const currency = SUPPORTED_CURRENCIES[effectiveCurrencyCode] || {
+    code: effectiveCurrencyCode,
+    symbol: effectiveCurrencyCode,
+    name: effectiveCurrencyCode,
+    rateToUSD: 1.0,
+  };
+
+  const isJpy = effectiveCurrencyCode === 'JPY';
+  const absAmount = Math.abs(amount);
+
+  const formattedNum = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: isJpy ? 0 : 2,
+    maximumFractionDigits: isJpy ? 0 : 2,
+  }).format(absAmount);
+
+  const sign = amount < 0 ? '-' : (showPlus ? '+' : '');
+
+  if (!showSymbol) {
+    return `${sign}${formattedNum}`;
+  }
+
+  // Amharic locale with Ethiopian Birr: symbol placed AFTER the amount
+  // e.g. "1,250.00 ብር", "-1,250.00 ብር", "+1,250.00 ብር"
+  if (effectiveCurrencyCode === 'ETB') {
+    if (activeLocale === 'am') {
+      return `${sign}${formattedNum} ብር`;
+    } else {
+      // In English locale, display standard code prefix or symbol
+      return `${sign}ETB ${formattedNum}`;
+    }
+  }
+
+  // Western currencies (USD, EUR, GBP, CAD, AUD, JPY):
+  // Symbol placed BEFORE the amount, e.g. "$1,250.00", "€1,250.00"
+  return `${sign}${currency.symbol}${formattedNum}`;
 }
 
 /**
@@ -97,14 +158,26 @@ export function formatPercentage(val: number): string {
   return `${val.toFixed(1)}%`;
 }
 
+const AMHARIC_MONTHS = [
+  'ጃንዩ', 'ፌብሩ', 'ማርች', 'ኤፕሪ', 'ሜይ', 'ጁን',
+  'ጁላይ', 'ኦገስ', 'ሴፕቴ', 'ጥቅም', 'ኖቬም', 'ዲሴም'
+];
+
 /**
- * Formats dates into human readable strings like "Oct 22, 2026"
+ * Formats dates into human readable strings like "Oct 22, 2026" or "ጥቅም 22፣ 2026"
  */
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string, localeArg?: string): string {
   try {
     const [year, month, day] = dateString.split('-').map(Number);
     if (!year || !month || !day) return dateString;
     const date = new Date(year, month - 1, day);
+    const activeLocale = localeArg || getActiveLocale();
+
+    if (activeLocale === 'am') {
+      const monthName = AMHARIC_MONTHS[month - 1] || `${month}ኛ ወር`;
+      return `${monthName} ${day}፣ ${year}`;
+    }
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

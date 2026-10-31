@@ -22,7 +22,7 @@ import { renderCategoryIcon } from '@/utils/categoryIcons';
 
 export const AnalyticsView: React.FC = () => {
   const { transactions, categories, currency, convertAmount } = useFinance();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const currentMonth = '2026-10';
 
@@ -114,7 +114,7 @@ export const AnalyticsView: React.FC = () => {
             {t('an.inflow', 'Total Inflow')}
           </span>
           <span className="text-xl font-bold font-mono text-emerald-600 mt-1 block">
-            +{formatCurrency(data.totalInflow, currency)}
+            +{formatCurrency(data.totalInflow, currency, true, language)}
           </span>
           <span className="text-[11px] text-slate-400 mt-1 block">October 2026</span>
         </div>
@@ -124,7 +124,7 @@ export const AnalyticsView: React.FC = () => {
             {t('an.outflow', 'Total Outflow')}
           </span>
           <span className="text-xl font-bold font-mono text-rose-600 mt-1 block">
-            -{formatCurrency(data.totalOutflow, currency)}
+            -{formatCurrency(data.totalOutflow, currency, true, language)}
           </span>
           <span className="text-[11px] text-slate-400 mt-1 block">October 2026</span>
         </div>
@@ -138,7 +138,7 @@ export const AnalyticsView: React.FC = () => {
               data.netSavings >= 0 ? 'text-slate-900' : 'text-rose-600'
             }`}
           >
-            {formatCurrency(data.netSavings, currency)}
+            {formatCurrency(data.netSavings, currency, true, language)}
           </span>
           <span className="text-[11px] text-emerald-600 mt-1 block font-medium">
             {formatPercentage(data.savingsRate)} savings rate
@@ -150,7 +150,7 @@ export const AnalyticsView: React.FC = () => {
             {t('an.avgDaily', 'Average Daily Spend')}
           </span>
           <span className="text-xl font-bold font-mono text-slate-900 mt-1 block">
-            {formatCurrency(data.avgDaily, currency)}
+            {formatCurrency(data.avgDaily, currency, true, language)}
           </span>
           <span className="text-[11px] text-slate-400 mt-1 block">Across 31 calendar days</span>
         </div>
@@ -181,7 +181,7 @@ export const AnalyticsView: React.FC = () => {
 
           <div className="mt-6 space-y-4">
             {monthlyTrends.map((m) => {
-              const maxVal = 15000;
+              const maxVal = Math.max(...monthlyTrends.map((x) => Math.max(x.inflow, x.outflow)), 1000);
               const inWidth = Math.min((m.inflow / maxVal) * 100, 100);
               const outWidth = Math.min((m.outflow / maxVal) * 100, 100);
 
@@ -190,7 +190,7 @@ export const AnalyticsView: React.FC = () => {
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-slate-800">{m.month}</span>
                     <span className="font-mono text-slate-500 text-[11px]">
-                      +{formatCurrency(m.inflow, currency)} / -{formatCurrency(m.outflow, currency)}
+                      +{formatCurrency(m.inflow, currency, true, language)} / -{formatCurrency(m.outflow, currency, true, language)}
                     </span>
                   </div>
                   <div className="space-y-1">
@@ -236,7 +236,7 @@ export const AnalyticsView: React.FC = () => {
                     <div className="flex items-center gap-3 font-mono text-[11px]">
                       <span className="text-slate-500">{formatPercentage(cat.percentage)}</span>
                       <span className="font-semibold text-slate-900">
-                        {formatCurrency(cat.amount, currency)}
+                        {formatCurrency(cat.amount, currency, true, language)}
                       </span>
                     </div>
                   </div>

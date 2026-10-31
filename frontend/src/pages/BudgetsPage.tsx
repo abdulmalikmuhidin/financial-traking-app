@@ -21,7 +21,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatCurrency, formatPercentage } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
-import { INITIAL_DEMO_BUDGETS } from '@/utils/mockData';
+import { SUGGESTED_DEFAULT_BUDGETS } from '@/utils/mockData';
 
 export const BudgetsView: React.FC = () => {
   const {
@@ -34,7 +34,7 @@ export const BudgetsView: React.FC = () => {
     deleteBudget,
     requestConfirmation,
   } = useFinance();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const currentMonth = '2026-10';
 
@@ -124,7 +124,7 @@ export const BudgetsView: React.FC = () => {
   };
 
   const handleLoadDefaults = () => {
-    INITIAL_DEMO_BUDGETS.forEach((b) => {
+    SUGGESTED_DEFAULT_BUDGETS.forEach((b) => {
       setCategoryBudget(b.categoryId, b.monthlyLimit, currentMonth);
     });
   };
@@ -169,7 +169,7 @@ export const BudgetsView: React.FC = () => {
             {t('bgt.totalAllocated', 'Total Allocated')}
           </span>
           <span className="text-xl font-bold font-mono text-slate-900 mt-1 block">
-            {formatCurrency(totalAllocated, currency)}
+            {formatCurrency(totalAllocated, currency, true, language)}
           </span>
         </div>
 
@@ -178,7 +178,7 @@ export const BudgetsView: React.FC = () => {
             {t('bgt.totalSpent', 'Total Spent')}
           </span>
           <span className="text-xl font-bold font-mono text-slate-900 mt-1 block">
-            {formatCurrency(totalSpent, currency)}
+            {formatCurrency(totalSpent, currency, true, language)}
           </span>
         </div>
 
@@ -191,7 +191,7 @@ export const BudgetsView: React.FC = () => {
               totalAllocated - totalSpent >= 0 ? 'text-emerald-600' : 'text-rose-600'
             }`}
           >
-            {formatCurrency(totalAllocated - totalSpent, currency)}
+            {formatCurrency(totalAllocated - totalSpent, currency, true, language)}
           </span>
         </div>
 
@@ -313,7 +313,7 @@ export const BudgetsView: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center text-[11px] text-slate-500 font-mono">
                       <span>{formatPercentage(percentage)} used</span>
-                      <span>{formatCurrency(spent, currency)} / {formatCurrency(limit, currency)}</span>
+                      <span>{formatCurrency(spent, currency, true, language)} / {formatCurrency(limit, currency, true, language)}</span>
                     </div>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export const BudgetsView: React.FC = () => {
                       isOver ? 'text-rose-600' : 'text-slate-900'
                     }`}
                   >
-                    {isOver ? '-' : '+'}{formatCurrency(Math.abs(remaining), currency)}
+                    {isOver ? '-' : '+'}{formatCurrency(Math.abs(remaining), currency, true, language)}
                   </span>
                 </div>
               </div>

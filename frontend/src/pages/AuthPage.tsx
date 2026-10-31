@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wallet, 
   ArrowRight, 
@@ -42,8 +42,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     submitPasswordReset, 
     sendOtpLogin, 
     verifyOtpLogin,
-    latestNotice,
-    loginAsDemo
+    latestNotice
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -57,7 +56,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regCurrency, setRegCurrency] = useState('USD');
+  const [regCurrency, setRegCurrency] = useState(() => (language === 'am' ? 'ETB' : 'USD'));
+
+  useEffect(() => {
+    if (language === 'am' && regCurrency === 'USD') {
+      setRegCurrency('ETB');
+    } else if (language === 'en' && regCurrency === 'ETB') {
+      setRegCurrency('USD');
+    }
+  }, [language]);
 
   // Forgot password form state
   const [forgotEmail, setForgotEmail] = useState('');

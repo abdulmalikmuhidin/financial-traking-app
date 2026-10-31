@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* User Profile & Demo Switcher Footer */}
+        {/* User Profile & Session Footer */}
         <div className="p-3 border-t border-slate-800/80 bg-slate-950/60">
           {currentUser && (
             <div className={`flex items-center gap-3 p-2 rounded-lg bg-slate-900/60 border border-slate-800 ${isCollapsed ? 'justify-center' : ''}`}>

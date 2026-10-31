@@ -19,10 +19,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
-  Sparkles,
+
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { formatCurrency } from '@/utils/currencies';
 
 interface HomePageProps {
   onGoToAuth: (mode: 'login' | 'register') => void;
@@ -37,6 +38,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const { language, setLanguage, t } = useLanguage();
   const { isAuthenticated, currentUser } = useAuth();
+  const previewCurrency = language === 'am' ? 'ETB' : 'USD';
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'am' : 'en');
@@ -107,15 +109,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               </button>
             ) : (
               <>
-                {onExploreDemo && (
-                  <button
-                    onClick={onExploreDemo}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t('landing.demo', 'Live Demo')}</span>
-                  </button>
-                )}
+                
                 <button
                   onClick={() => onGoToAuth('login')}
                   className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
@@ -160,21 +154,18 @@ export const HomePage: React.FC<HomePageProps> = ({
 
             {/* CTAs */}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              {onExploreDemo && (
-                <button
-                  onClick={onExploreDemo}
-                  className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-emerald-950" />
-                  <span>{t('landing.ctaDemo', 'Explore Live Demo (1-Click)')}</span>
-                </button>
-              )}
               <button
                 onClick={() => onGoToAuth('register')}
-                className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-7 py-3.5 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{t('landing.ctaGetStarted', 'Create Account')}</span>
+                <span>{t('landing.ctaGetStarted', 'Create Free Account')}</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onGoToAuth('login')}
+                className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{t('landing.login', 'Sign In')}</span>
               </button>
               <a
                 href="#features"
@@ -231,7 +222,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block mb-1">
                   {t('dash.netBalance', 'Total Net Balance')}
                 </span>
-                <span className="text-2xl font-bold font-mono text-white">$14,240.00</span>
+                <span className="text-2xl font-bold font-mono text-white">{formatCurrency(14240, previewCurrency, true, language)}</span>
                 <span className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
                   <ArrowUpRight className="w-3.5 h-3.5" /> +18.4% vs last month
                 </span>
@@ -241,7 +232,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block mb-1">
                   {t('dash.inflows', 'October Inflows')}
                 </span>
-                <span className="text-2xl font-bold font-mono text-emerald-400">$13,290.00</span>
+                <span className="text-2xl font-bold font-mono text-emerald-400">{formatCurrency(13290, previewCurrency, true, language)}</span>
                 <span className="text-[11px] text-slate-400 mt-1 block">Salary, Consulting & Dividends</span>
               </div>
 
@@ -249,7 +240,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block mb-1">
                   {t('dash.outflows', 'October Outflows')}
                 </span>
-                <span className="text-2xl font-bold font-mono text-rose-400">$3,666.69</span>
+                <span className="text-2xl font-bold font-mono text-rose-400">{formatCurrency(3666.69, previewCurrency, true, language)}</span>
                 <span className="text-[11px] text-slate-400 mt-1 block">8 Active Budget Limits</span>
               </div>
             </div>
@@ -402,15 +393,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             <div className="mt-8 flex items-center gap-3">
-              {onExploreDemo && (
-                <button
-                  onClick={onExploreDemo}
-                  className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-emerald-950" />
-                  <span>{t('landing.demo', 'Explore Live Demo')}</span>
-                </button>
-              )}
+              
               <button
                 onClick={() => onGoToAuth('register')}
                 className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 border border-slate-800 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
@@ -431,7 +414,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <span className="font-semibold text-white">
                     {language === 'am' ? 'የምግብ እና የዕለት ወጪ' : 'Food & Dining'}
                   </span>
-                  <span className="font-mono text-emerald-400">$385.90 / $750.00</span>
+                  <span className="font-mono text-emerald-400">{formatCurrency(385.9, previewCurrency, true, language)} / {formatCurrency(750, previewCurrency, true, language)}</span>
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                   <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '51.4%' }} />
@@ -444,7 +427,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <span className="font-semibold text-white">
                     {language === 'am' ? 'ቤት እና ኪራይ' : 'Housing & Rent'}
                   </span>
-                  <span className="font-mono text-amber-400">$2,150.00 / $2,200.00</span>
+                  <span className="font-mono text-amber-400">{formatCurrency(2150, previewCurrency, true, language)} / {formatCurrency(2200, previewCurrency, true, language)}</span>
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                   <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: '97.7%' }} />
@@ -466,15 +449,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             {t('landing.ctaBannerSub', 'Join FinTrack today. Set up your personalized workspace in seconds.')}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            {onExploreDemo && (
-              <button
-                onClick={onExploreDemo}
-                className="w-full sm:w-auto px-7 py-3 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-950" />
-                <span>{t('landing.ctaDemo', 'Explore Live Demo (1-Click)')}</span>
-              </button>
-            )}
+            
             <button
               onClick={() => onGoToAuth('register')}
               className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors cursor-pointer"

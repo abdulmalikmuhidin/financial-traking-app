@@ -35,7 +35,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-gifts', name: 'Gifts & Refunds', type: 'income', icon: 'Gift', color: '#F59E0B', isDefault: true },
 ];
 
-export const INITIAL_DEMO_BUDGETS: Budget[] = [
+export const SUGGESTED_DEFAULT_BUDGETS: Budget[] = [
+  // Recommended starter budget allocation
   { id: 'b-housing', userId: 'user-demo-alex', categoryId: 'cat-housing', monthlyLimit: 2200, month: '2026-10', currency: 'USD' },
   { id: 'b-food', userId: 'user-demo-alex', categoryId: 'cat-food', monthlyLimit: 750, month: '2026-10', currency: 'USD' },
   { id: 'b-transport', userId: 'user-demo-alex', categoryId: 'cat-transport', monthlyLimit: 300, month: '2026-10', currency: 'USD' },
@@ -274,3 +275,5 @@ export const INITIAL_DEMO_TRANSACTIONS: Transaction[] = [
     createdAt: '2026-10-21T09:00:00Z',
   },
 ];
+
+export const INITIAL_DEMO_BUDGETS = SUGGESTED_DEFAULT_BUDGETS;

@@ -35,7 +35,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   onEdit,
 }) => {
   const { categories, deleteTransaction, requestConfirmation } = useFinance();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   if (!transaction) return null;
 
@@ -93,7 +93,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 isIncome ? 'text-emerald-600' : 'text-slate-900'
               }`}
             >
-              {isIncome ? '+' : '-'}{formatCurrency(transaction.amount, transaction.currency)}
+              {isIncome ? '+' : '-'}{formatCurrency(transaction.amount, transaction.currency, true, language)}
             </span>
             <p className="text-xs font-semibold text-slate-800 mt-1">
               {transaction.description}
@@ -125,7 +125,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 {t('common.date', 'Date')}
               </span>
               <span className="font-mono text-slate-900">
-                {formatDate(transaction.date)}
+                {formatDate(transaction.date, language)}
               </span>
             </div>
 

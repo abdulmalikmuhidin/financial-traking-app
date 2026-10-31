@@ -649,8 +649,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguageState(lang);
     try {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+      if (typeof document !== 'undefined') {
+        document.documentElement.lang = lang;
+      }
     } catch {}
   };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
 
   const t = (key: string, defaultText?: string): string => {
     const langDict = TRANSLATIONS[language] || TRANSLATIONS.en;

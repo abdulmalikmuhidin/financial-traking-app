@@ -7,6 +7,7 @@ import {
   ToastType 
 } from '../types';
 import { useAuth } from './AuthContext';
+import { useLanguage } from './LanguageContext';
 import { 
   DEFAULT_CATEGORIES, 
   INITIAL_DEMO_TRANSACTIONS, 
@@ -71,6 +72,7 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, token } = useAuth();
+  const { language } = useLanguage();
   const userId = currentUser ? currentUser.id : 'guest';
 
   // Storage keys scoped to the user
@@ -85,8 +87,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const saved = localStorage.getItem(STORAGE_KEY_CURRENCY);
       if (saved) return saved;
     } catch {}
-    return currentUser?.preferredCurrency || 'USD';
+    const savedLang = typeof window !== 'undefined' ? localStorage.getItem('fintrack_lang') : null;
+    if (savedLang === 'am') return 'ETB';
+    return currentUser?.preferredCurrency || (language === 'am' ? 'ETB' : 'USD');
   });
+
+  // Synchronize currency with application language changes
+  useEffect(() => {
+    if (language === 'am' && currency === 'USD') {
+      setCurrencyState('ETB');
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENCY, 'ETB');
+      } catch {}
+    } else if (language === 'en' && currency === 'ETB') {
+      setCurrencyState('USD');
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENCY, 'USD');
+      } catch {}
+    }
+  }, [language]);
 
   // Categories
   const [categories, setCategories] = useState<Category[]>(() => {
@@ -196,7 +215,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Currency Helpers
   const setCurrency = (code: string) => {
     setCurrencyState(code);
-    showToast(`Currency changed to ${code}`, 'info');
+    try {
+      localStorage.setItem(STORAGE_KEY_CURRENCY, code);
+    } catch {}
+    showToast(
+      language === 'am' ? `የገንዘብ አይነት ወደ ${code} ተቀይሯል` : `Currency changed to ${code}`,
+      'info'
+    );
   };
 
   const convertAmount = (amount: number, fromCode: string = 'USD'): number => {
@@ -205,7 +230,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const formatAmount = (amount: number, fromCode: string = currency): string => {
     const converted = fromCode === currency ? amount : convertCurrency(amount, fromCode, currency);
-    return formatCurrency(converted, currency);
+    return formatCurrency(converted, currency, true, language);
   };
 
   // Transaction CRUD
