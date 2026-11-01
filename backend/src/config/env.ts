@@ -44,7 +44,6 @@ export const env = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   MONGODB_URI: process.env.MONGODB_URI || '',
   JWT_SECRET: jwtSecret,
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
   SMTP_HOST: process.env.SMTP_HOST || '',
   SMTP_PORT: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
