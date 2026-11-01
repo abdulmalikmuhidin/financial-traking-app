@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { STORAGE_KEYS } from '../constants';
 
 export type Language = 'en' | 'am';
 
@@ -8,9 +9,9 @@ interface LanguageContextType {
   t: (key: string, defaultText?: string) => string;
 }
 
-const LANGUAGE_STORAGE_KEY = 'fintrack_lang';
+const LANGUAGE_STORAGE_KEY = STORAGE_KEYS.LANGUAGE;
 
-export const TRANSLATIONS: Record<Language, Record<string, string>> = {
+const TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
     // Brand & App
     'app.name': 'FinTrack',

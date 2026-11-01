@@ -8,17 +8,11 @@ import {
   Search,
   Plus,
   Download,
-  Upload,
   Filter,
-  ArrowUpRight,
-  ArrowDownRight,
   Trash2,
   Edit2,
   Eye,
-  Calendar,
-  CreditCard,
   Repeat,
-  ArrowUpDown,
 } from 'lucide-react';
 import { Transaction } from '@/types';
 import { useFinance } from '@/context/FinanceContext';
@@ -26,13 +20,13 @@ import { useLanguage } from '@/context/LanguageContext';
 import { formatCurrency, formatDate } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
 
-interface TransactionsViewProps {
+interface TransactionsPageProps {
   onOpenNewTransaction: () => void;
   onEditTransaction: (tx: Transaction) => void;
   onViewTransaction: (tx: Transaction) => void;
 }
 
-export const TransactionsView: React.FC<TransactionsViewProps> = ({
+export const TransactionsPage: React.FC<TransactionsPageProps> = ({
   onOpenNewTransaction,
   onEditTransaction,
   onViewTransaction,
@@ -400,4 +394,3 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   );
 };
 
-export const TransactionsPage = TransactionsView;

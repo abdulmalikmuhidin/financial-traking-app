@@ -25,7 +25,7 @@ const COLOR_OPTIONS = [
   '#64748B', // Slate
 ];
 
-export const CategoriesView: React.FC = () => {
+export const CategoriesPage: React.FC = () => {
   const { categories, addCategory, updateCategory, deleteCategory, requestConfirmation } = useFinance();
   const { t } = useLanguage();
 
@@ -359,4 +359,3 @@ export const CategoriesView: React.FC = () => {
   );
 };
 
-export const CategoriesPage = CategoriesView;

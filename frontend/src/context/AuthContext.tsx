@@ -4,13 +4,13 @@ import { DEMO_USER } from '../utils/mockData';
 import { authApiService } from '../services/auth.service';
 import { STORAGE_KEYS } from '../constants';
 
-export interface DbStatusInfo {
+interface DbStatusInfo {
   isConnected: boolean;
   dbError: string | null;
   databaseName?: string;
 }
 
-export interface VerificationNotice {
+interface VerificationNotice {
   email: string;
   code?: string;
   type: 'verification' | 'reset' | 'otp';
@@ -78,8 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     checkDbStatus();
-    const interval = setInterval(checkDbStatus, 8000);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

@@ -15,13 +15,13 @@ import { useLanguage } from '@/context/LanguageContext';
 import { formatCurrency, formatPercentage, formatDate } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
 
-interface DashboardViewProps {
+interface DashboardPageProps {
   onNavigate: (tab: NavigationTab) => void;
   onOpenNewTransaction: () => void;
   onViewTransaction: (tx: Transaction) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
+export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigate,
   onOpenNewTransaction,
   onViewTransaction,
@@ -471,4 +471,3 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 };
 
-export const DashboardPage = DashboardView;

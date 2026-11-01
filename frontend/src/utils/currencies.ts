@@ -1,4 +1,5 @@
 import { Currency } from '../types';
+import { STORAGE_KEYS } from '../constants';
 
 export const SUPPORTED_CURRENCIES: Record<string, Currency> = {
   USD: {
@@ -45,7 +46,7 @@ export const SUPPORTED_CURRENCIES: Record<string, Currency> = {
   },
 };
 
-export interface FormatCurrencyOptions {
+interface FormatCurrencyOptions {
   showSymbol?: boolean;
   locale?: string;
   showPlus?: boolean;
@@ -55,10 +56,10 @@ export interface FormatCurrencyOptions {
  * Returns the currently active application locale ('en' or 'am').
  * Persisted in localStorage and synchronized with <html lang="...">.
  */
-export function getActiveLocale(): 'en' | 'am' {
+function getActiveLocale(): 'en' | 'am' {
   if (typeof window !== 'undefined') {
     try {
-      const stored = localStorage.getItem('fintrack_lang');
+      const stored = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
       if (stored === 'am' || stored === 'en') return stored;
       const htmlLang = document.documentElement.lang;
       if (htmlLang === 'am' || htmlLang === 'en') return htmlLang;

@@ -5,8 +5,7 @@ import {
   Coins, 
   ChevronDown, 
   User as UserIcon, 
-  LogOut, 
-  ShieldCheck, 
+  LogOut,
   Check,
   Globe,
   Download

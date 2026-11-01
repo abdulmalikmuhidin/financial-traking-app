@@ -1,6 +1,5 @@
 import { STORAGE_KEYS } from '../constants';
 
-
 export class ApiError extends Error {
   public status: number;
   public data: any;
@@ -13,17 +12,6 @@ export class ApiError extends Error {
   }
 }
 
-/*function getBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const viteUrl = import.meta.env.local.VITE_API_URL;
-    const nextUrl = (import.meta.env.local as any).NEXT_PUBLIC_API_URL;
-    const envUrl = viteUrl || nextUrl;
-    if (envUrl && typeof envUrl === 'string') {
-      return envUrl.replace(/\/+$/, '');
-    }
-  }
-  return '';
-}*/
 function getBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && typeof envUrl === 'string') {
@@ -62,7 +50,6 @@ export async function request<T = any>(
   }
 
   const url = buildUrl(endpoint);
-
   const response = await fetch(url, {
     ...options,
     headers,

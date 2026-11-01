@@ -12,10 +12,7 @@ import {
   CreditCard,
   Tag,
   Building,
-  FileText,
   Repeat,
-  ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react';
 import { Transaction } from '@/types';
 import { useFinance } from '@/context/FinanceContext';

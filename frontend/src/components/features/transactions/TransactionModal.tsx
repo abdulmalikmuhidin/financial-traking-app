@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, Calendar, DollarSign, Tag, Repeat } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Transaction } from '@/types';
 import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -64,7 +64,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setIsRecurring(false);
     }
     setError(null);
-  }, [transactionToEdit, isOpen, currency, categories]);
+  }, [transactionToEdit, isOpen]);
 
   if (!isOpen) return null;
 

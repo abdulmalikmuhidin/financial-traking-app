@@ -14,10 +14,8 @@ import {
   FileSpreadsheet,
   Globe,
   CheckCircle2,
-  Lock,
   Layers,
   ArrowUpRight,
-  ArrowDownRight,
   ChevronRight,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -27,16 +25,14 @@ import { formatCurrency } from "@/utils/currencies";
 interface HomePageProps {
   onGoToAuth: (mode: "login" | "register") => void;
   onGoToDashboard?: () => void;
-  onExploreDemo?: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   onGoToAuth,
   onGoToDashboard,
-  onExploreDemo,
 }) => {
   const { language, setLanguage, t } = useLanguage();
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated } = useAuth();
   const previewCurrency = language === "am" ? "ETB" : "USD";
 
   const toggleLanguage = () => {

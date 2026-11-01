@@ -7,13 +7,9 @@ import React, { useState, useMemo } from 'react';
 import {
   PieChart,
   Plus,
-  AlertTriangle,
-  CheckCircle2,
-  TrendingDown,
   Edit2,
   Trash2,
   RotateCcw,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { Budget } from '@/types';
@@ -23,7 +19,7 @@ import { formatCurrency, formatPercentage } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
 import { SUGGESTED_DEFAULT_BUDGETS } from '@/utils/mockData';
 
-export const BudgetsView: React.FC = () => {
+export const BudgetsPage: React.FC = () => {
   const {
     budgets,
     categories,
@@ -416,4 +412,3 @@ export const BudgetsView: React.FC = () => {
   );
 };
 
-export const BudgetsPage = BudgetsView;

@@ -4,23 +4,12 @@
  */
 
 import React, { useMemo } from 'react';
-import {
-  BarChart3,
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
-  PieChart,
-  Calendar,
-  Wallet,
-  Sparkles,
-  Layers,
-} from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatCurrency, formatPercentage } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
 
-export const AnalyticsView: React.FC = () => {
+export const AnalyticsPage: React.FC = () => {
   const { transactions, categories, currency, convertAmount } = useFinance();
   const { t, language } = useLanguage();
 
@@ -259,4 +248,3 @@ export const AnalyticsView: React.FC = () => {
   );
 };
 
-export const AnalyticsPage = AnalyticsView;

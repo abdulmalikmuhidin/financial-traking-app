@@ -276,4 +276,3 @@ export const INITIAL_DEMO_TRANSACTIONS: Transaction[] = [
   },
 ];
 
-export const INITIAL_DEMO_BUDGETS = SUGGESTED_DEFAULT_BUDGETS;

@@ -16,15 +16,13 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
-  ShieldCheck,
   Send
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { SUPPORTED_CURRENCIES } from '@/utils/currencies';
 
-export type AuthMode = 'login' | 'register' | 'forgot' | 'otp';
+type AuthMode = 'login' | 'register' | 'forgot' | 'otp';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -42,7 +40,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     submitPasswordReset, 
     sendOtpLogin, 
     verifyOtpLogin,
-    latestNotice
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 

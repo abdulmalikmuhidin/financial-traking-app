@@ -11,10 +11,11 @@ import { useLanguage } from './LanguageContext';
 import { 
   DEFAULT_CATEGORIES, 
   INITIAL_DEMO_TRANSACTIONS, 
-  INITIAL_DEMO_BUDGETS 
+  SUGGESTED_DEFAULT_BUDGETS 
 } from '../utils/mockData';
 import { convertCurrency, formatCurrency } from '../utils/currencies';
 import { financeApiService } from '../services/finance.service';
+import { STORAGE_KEYS } from '../constants';
 
 interface ConfirmationConfig {
   title: string;
@@ -35,7 +36,6 @@ interface FinanceContextType {
 
   // Calculators & Converters
   convertAmount: (amount: number, fromCode: string) => number;
-  formatAmount: (amount: number, fromCode?: string) => string;
 
   // Transaction CRUD
   addTransaction: (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => Promise<void>;
@@ -52,10 +52,8 @@ interface FinanceContextType {
   deleteCategory: (id: string) => boolean;
 
   // Data Actions
-  resetToDemoData: () => void;
   clearAllUserData: () => void;
   exportTransactionsToCSV: () => void;
-  importTransactionsFromCSV: (csvText: string) => { added: number; errors: number };
   exportBackupJSON: () => void;
   importBackupJSON: (jsonString: string) => boolean;
 
@@ -87,7 +85,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const saved = localStorage.getItem(STORAGE_KEY_CURRENCY);
       if (saved) return saved;
     } catch {}
-    const savedLang = typeof window !== 'undefined' ? localStorage.getItem('fintrack_lang') : null;
+    const savedLang = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.LANGUAGE) : null;
     if (savedLang === 'am') return 'ETB';
     return currentUser?.preferredCurrency || (language === 'am' ? 'ETB' : 'USD');
   });
@@ -131,7 +129,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const saved = localStorage.getItem(STORAGE_KEY_BUDGETS);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return currentUser?.isDemoUser ? INITIAL_DEMO_BUDGETS : [];
+    return currentUser?.isDemoUser ? SUGGESTED_DEFAULT_BUDGETS : [];
   });
 
   // UI state
@@ -226,11 +224,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const convertAmount = (amount: number, fromCode: string = 'USD'): number => {
     return convertCurrency(amount, fromCode, currency);
-  };
-
-  const formatAmount = (amount: number, fromCode: string = currency): string => {
-    const converted = fromCode === currency ? amount : convertCurrency(amount, fromCode, currency);
-    return formatCurrency(converted, currency, true, language);
   };
 
   // Transaction CRUD
@@ -391,21 +384,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Data actions
-  const resetToDemoData = () => {
-    setTransactions(INITIAL_DEMO_TRANSACTIONS);
-    setBudgets(INITIAL_DEMO_BUDGETS);
-    setCategories(DEFAULT_CATEGORIES);
-    setCurrencyState('USD');
-    showToast('Reset to realistic demo dataset', 'info');
-  };
-
   const clearAllUserData = () => {
     setTransactions([]);
     setBudgets([]);
     showToast('All transaction and budget data cleared', 'warning');
   };
 
-  // CSV Export & Import
+  // CSV Export
   const exportTransactionsToCSV = () => {
     if (transactions.length === 0) {
       showToast('No transactions to export', 'warning');
@@ -437,76 +422,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     link.click();
     document.body.removeChild(link);
     showToast('Transactions exported to CSV', 'success');
-  };
-
-  const importTransactionsFromCSV = (csvText: string): { added: number; errors: number } => {
-    const lines = csvText.split('\n').filter((l) => l.trim().length > 0);
-    if (lines.length <= 1) {
-      showToast('CSV is empty or missing data rows', 'error');
-      return { added: 0, errors: 0 };
-    }
-
-    let added = 0;
-    let errors = 0;
-    const newItems: Transaction[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      try {
-        const raw = lines[i];
-        const match = raw.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        if (!match || match.length < 5) {
-          errors++;
-          continue;
-        }
-
-        const clean = (val: string) => (val || '').replace(/^"|"$/g, '').trim();
-
-        const date = clean(match[0]);
-        const type = clean(match[1]).toLowerCase() === 'income' ? 'income' : 'expense';
-        const description = clean(match[2]) || 'Imported Transaction';
-        const merchant = clean(match[3]) || undefined;
-        const categoryName = clean(match[4]);
-        const amount = parseFloat(clean(match[5])) || 0;
-        const txCurrency = clean(match[6]) || currency;
-        const paymentMethod = (clean(match[7]) as any) || 'Credit Card';
-        const notes = clean(match[8]) || undefined;
-
-        if (amount <= 0 || !date) {
-          errors++;
-          continue;
-        }
-
-        let catObj = categories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase());
-        let catId = catObj ? catObj.id : (type === 'income' ? 'cat-salary' : 'cat-shopping');
-
-        newItems.push({
-          id: `tx-imp-${Date.now()}-${i}`,
-          userId,
-          type,
-          amount,
-          currency: txCurrency,
-          categoryId: catId,
-          date,
-          description,
-          merchant,
-          paymentMethod,
-          notes,
-          createdAt: new Date().toISOString(),
-        });
-        added++;
-      } catch {
-        errors++;
-      }
-    }
-
-    if (newItems.length > 0) {
-      setTransactions((prev) => [...newItems, ...prev]);
-      showToast(`Successfully imported ${added} transactions`, 'success');
-    } else {
-      showToast('No valid transactions could be parsed from file', 'error');
-    }
-
-    return { added, errors };
   };
 
   const exportBackupJSON = () => {
@@ -566,7 +481,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currency,
         setCurrency,
         convertAmount,
-        formatAmount,
         addTransaction,
         updateTransaction,
         deleteTransaction,
@@ -575,10 +489,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addCategory,
         updateCategory,
         deleteCategory,
-        resetToDemoData,
         clearAllUserData,
         exportTransactionsToCSV,
-        importTransactionsFromCSV,
         exportBackupJSON,
         importBackupJSON,
         toasts,

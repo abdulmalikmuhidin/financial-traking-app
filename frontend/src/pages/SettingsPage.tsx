@@ -15,9 +15,6 @@ import {
   Globe,
   FileSpreadsheet,
   RefreshCw,
-  Sparkles,
-  ShieldCheck,
-  Mail,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useFinance } from "@/context/FinanceContext";
@@ -25,7 +22,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_CURRENCIES } from "@/utils/currencies";
 import { EmailVerificationModal } from "@/components/features/auth/EmailVerificationModal";
 
-export const SettingsView: React.FC = () => {
+export const SettingsPage: React.FC = () => {
   const {
     currentUser,
     updateProfile,
@@ -487,4 +484,3 @@ export const SettingsView: React.FC = () => {
   );
 };
 
-export const SettingsPage = SettingsView;
