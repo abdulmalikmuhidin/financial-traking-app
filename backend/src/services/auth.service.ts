@@ -1,8 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/User';
-import { getDbStatus } from '../config/database';
-import { fallbackStore } from './fallbackStore.service';
+import { assertDbConnected } from '../config/database';
 import { sendAuthenticationEmail } from './email.service';
 import { env } from '../config/env';
 
@@ -16,95 +15,37 @@ export const generateSixDigitCode = (): string => {
 
 export class AuthService {
   async register(data: { name: string; email: string; password: string; preferredCurrency?: string }) {
+    assertDbConnected();
+
     const { name, email, password, preferredCurrency } = data;
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const currency = preferredCurrency || 'USD';
-    const status = getDbStatus();
 
     const verificationCode = generateSixDigitCode();
     const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-    if (status.isConnected) {
-      const existingUser = await User.findOne({ email: cleanEmail });
-      if (existingUser) {
-        throw { statusCode: 400, message: 'An account with this email already exists.' };
-      }
-
-      const newUser = new User({
-        name: cleanName,
-        email: cleanEmail,
-        password,
-        preferredCurrency: currency,
-        jobTitle: 'Personal Account',
-        monthlyIncomeTarget: 5000,
-        alertThresholdPercent: 80,
-        isEmailVerified: false,
-        emailVerificationCode: verificationCode,
-        emailVerificationExpires: verificationExpiry,
-      });
-
-      await newUser.save();
-
-      const emailRes = await sendAuthenticationEmail({
-        to: cleanEmail,
-        subject: 'Verify your FinTrack email address',
-        title: 'Confirm Your Email Address',
-        body: `Welcome to FinTrack, ${cleanName}! Please enter the following 6-digit security code to verify your account.`,
-        code: verificationCode,
-        actionText: 'Email Verification Code',
-      });
-
-      const token = generateToken(newUser._id.toString(), newUser.email, newUser.name);
-
-      return {
-        token,
-        user: {
-          id: newUser._id.toString(),
-          name: newUser.name,
-          email: newUser.email,
-          jobTitle: newUser.jobTitle,
-          preferredCurrency: newUser.preferredCurrency,
-          isDemoUser: false,
-          isEmailVerified: false,
-          monthlyIncomeTarget: newUser.monthlyIncomeTarget,
-          alertThresholdPercent: newUser.alertThresholdPercent,
-          createdAt: newUser.createdAt,
-        },
-      };
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      throw { statusCode: 400, message: 'An account with this email already exists.' };
     }
 
-    // Fallback store
-    const existingInFallback = fallbackStore.users.find(
-      (u) => u.email.toLowerCase() === cleanEmail
-    );
-    if (existingInFallback) {
-      throw { statusCode: 400, message: 'An account with this email already exists in local registry.' };
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    const newId = `user-${Date.now()}`;
-
-    const newStoredUser = {
-      id: newId,
+    const newUser = new User({
       name: cleanName,
       email: cleanEmail,
-      passwordHash,
-      jobTitle: 'Personal Account',
+      password,
       preferredCurrency: currency,
-      isDemoUser: false,
-      isEmailVerified: false,
-      emailVerificationCode: verificationCode,
-      emailVerificationExpires: verificationExpiry.toISOString(),
+      jobTitle: 'Personal Account',
       monthlyIncomeTarget: 5000,
       alertThresholdPercent: 80,
-      createdAt: new Date().toISOString(),
-    };
+      isEmailVerified: false,
+      emailVerificationCode: verificationCode,
+      emailVerificationExpires: verificationExpiry,
+    });
 
-    fallbackStore.users.push(newStoredUser);
+    await newUser.save();
 
-    const emailRes = await sendAuthenticationEmail({
+    await sendAuthenticationEmail({
       to: cleanEmail,
       subject: 'Verify your FinTrack email address',
       title: 'Confirm Your Email Address',
@@ -113,81 +54,49 @@ export class AuthService {
       actionText: 'Email Verification Code',
     });
 
-    const token = generateToken(newId, cleanEmail, cleanName);
+    const token = generateToken(newUser._id.toString(), newUser.email, newUser.name);
 
     return {
       token,
       user: {
-        id: newStoredUser.id,
-        name: newStoredUser.name,
-        email: newStoredUser.email,
-        jobTitle: newStoredUser.jobTitle,
-        preferredCurrency: newStoredUser.preferredCurrency,
-        isDemoUser: false,
+        id: newUser._id.toString(),
+        name: newUser.name,
+        email: newUser.email,
+        jobTitle: newUser.jobTitle,
+        preferredCurrency: newUser.preferredCurrency,
         isEmailVerified: false,
-        monthlyIncomeTarget: newStoredUser.monthlyIncomeTarget,
-        alertThresholdPercent: newStoredUser.alertThresholdPercent,
-        createdAt: newStoredUser.createdAt,
+        monthlyIncomeTarget: newUser.monthlyIncomeTarget,
+        alertThresholdPercent: newUser.alertThresholdPercent,
+        createdAt: newUser.createdAt,
       },
     };
   }
 
   async login(email: string, password: string) {
+    assertDbConnected();
+
     const cleanEmail = email.trim().toLowerCase();
-    const status = getDbStatus();
-
-    if (status.isConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        throw { statusCode: 401, message: 'Invalid email or password.' };
-      }
-
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        throw { statusCode: 401, message: 'Invalid email or password.' };
-      }
-
-      const token = generateToken(user._id.toString(), user.email, user.name);
-
-      return {
-        token,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          jobTitle: user.jobTitle,
-          preferredCurrency: user.preferredCurrency,
-          isDemoUser: user.isDemoUser,
-          isEmailVerified: !!user.isEmailVerified,
-          monthlyIncomeTarget: user.monthlyIncomeTarget,
-          alertThresholdPercent: user.alertThresholdPercent,
-          createdAt: user.createdAt,
-        },
-      };
-    }
-
-    const user = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
-      throw { statusCode: 401, message: 'No account found with this email. Try Demo Account or register.' };
+      throw { statusCode: 401, message: 'Invalid email or password.' };
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      throw { statusCode: 401, message: 'Incorrect password.' };
+      throw { statusCode: 401, message: 'Invalid email or password.' };
     }
 
-    const token = generateToken(user.id, user.email, user.name);
+    const token = generateToken(user._id.toString(), user.email, user.name);
 
     return {
       token,
       user: {
-        id: user.id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         jobTitle: user.jobTitle,
         preferredCurrency: user.preferredCurrency,
-        isDemoUser: user.isDemoUser,
-        isEmailVerified: !!user.isEmailVerified,
+        isEmailVerified: user.isEmailVerified,
         monthlyIncomeTarget: user.monthlyIncomeTarget,
         alertThresholdPercent: user.alertThresholdPercent,
         createdAt: user.createdAt,
@@ -196,48 +105,25 @@ export class AuthService {
   }
 
   async sendVerification(targetEmail: string) {
+    assertDbConnected();
+
     const verificationCode = generateSixDigitCode();
     const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000);
-    const status = getDbStatus();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: targetEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'No user account found for this email.' };
-      }
-
-      user.emailVerificationCode = verificationCode;
-      user.emailVerificationExpires = verificationExpiry;
-      await user.save();
-
-      const emailRes = await sendAuthenticationEmail({
-        to: targetEmail,
-        subject: 'Your FinTrack Email Verification Code',
-        title: 'Verify Your Email',
-        body: `Hello ${user.name}, use the code below to verify your email address on FinTrack.`,
-        code: verificationCode,
-        actionText: 'Verification Code',
-      });
-
-      return {
-        success: true,
-        message: 'A fresh verification code has been dispatched to your email.',
-      };
-    }
-
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === targetEmail);
-    if (!fallbackUser) {
+    const user = await User.findOne({ email: targetEmail });
+    if (!user) {
       throw { statusCode: 404, message: 'No user account found for this email.' };
     }
 
-    fallbackUser.emailVerificationCode = verificationCode;
-    fallbackUser.emailVerificationExpires = verificationExpiry.toISOString();
+    user.emailVerificationCode = verificationCode;
+    user.emailVerificationExpires = verificationExpiry;
+    await user.save();
 
     await sendAuthenticationEmail({
       to: targetEmail,
       subject: 'Your FinTrack Email Verification Code',
       title: 'Verify Your Email',
-      body: `Hello ${fallbackUser.name}, use the code below to verify your email address on FinTrack.`,
+      body: `Hello ${user.name}, use the code below to verify your email address on FinTrack.`,
       code: verificationCode,
       actionText: 'Verification Code',
     });
@@ -249,145 +135,57 @@ export class AuthService {
   }
 
   async verifyEmail(targetEmail: string, cleanCode: string) {
-    const status = getDbStatus();
+    assertDbConnected();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: targetEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'User account not found.' };
-      }
-
-      if (user.isEmailVerified) {
-        return {
-          success: true,
-          message: 'Email is already verified.',
-          user: {
-            id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            isEmailVerified: true,
-            preferredCurrency: user.preferredCurrency,
-          },
-        };
-      }
-
-      if (!user.emailVerificationCode || user.emailVerificationCode !== cleanCode) {
-        throw { statusCode: 400, message: 'Invalid verification code. Please check your email.' };
-      }
-
-      if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
-        throw { statusCode: 400, message: 'Verification code has expired. Please request a new one.' };
-      }
-
-      user.isEmailVerified = true;
-      user.emailVerificationCode = undefined;
-      user.emailVerificationExpires = undefined;
-      await user.save();
-
-      return {
-        success: true,
-        message: 'Email address verified successfully!',
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          jobTitle: user.jobTitle,
-          preferredCurrency: user.preferredCurrency,
-          isDemoUser: user.isDemoUser,
-          isEmailVerified: true,
-          monthlyIncomeTarget: user.monthlyIncomeTarget,
-          alertThresholdPercent: user.alertThresholdPercent,
-          createdAt: user.createdAt,
-        },
-      };
+    const user = await User.findOne({ email: targetEmail });
+    if (!user) {
+      throw { statusCode: 404, message: 'No account found with this email address.' };
     }
 
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === targetEmail);
-    if (!fallbackUser) {
-      throw { statusCode: 404, message: 'User account not found.' };
+    if (!user.emailVerificationCode || user.emailVerificationCode !== cleanCode) {
+      throw { statusCode: 400, message: 'Invalid verification code. Please check your email and try again.' };
     }
 
-    if (fallbackUser.isEmailVerified) {
-      return {
-        success: true,
-        message: 'Email is already verified.',
-        user: {
-          id: fallbackUser.id,
-          name: fallbackUser.name,
-          email: fallbackUser.email,
-          isEmailVerified: true,
-          preferredCurrency: fallbackUser.preferredCurrency,
-        },
-      };
+    if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+      throw { statusCode: 400, message: 'Verification code has expired. Please request a fresh one.' };
     }
 
-    if (!fallbackUser.emailVerificationCode || fallbackUser.emailVerificationCode !== cleanCode) {
-      throw { statusCode: 400, message: 'Invalid verification code. Please check your email.' };
-    }
-
-    if (fallbackUser.emailVerificationExpires && new Date() > new Date(fallbackUser.emailVerificationExpires)) {
-      throw { statusCode: 400, message: 'Verification code has expired. Please request a new one.' };
-    }
-
-    fallbackUser.isEmailVerified = true;
-    fallbackUser.emailVerificationCode = undefined;
-    fallbackUser.emailVerificationExpires = undefined;
+    user.isEmailVerified = true;
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
 
     return {
       success: true,
-      message: 'Email address verified successfully!',
+      message: 'Email verified successfully!',
       user: {
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        jobTitle: fallbackUser.jobTitle,
-        preferredCurrency: fallbackUser.preferredCurrency,
-        isDemoUser: fallbackUser.isDemoUser,
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        jobTitle: user.jobTitle,
+        preferredCurrency: user.preferredCurrency,
         isEmailVerified: true,
-        monthlyIncomeTarget: fallbackUser.monthlyIncomeTarget,
-        alertThresholdPercent: fallbackUser.alertThresholdPercent,
-        createdAt: fallbackUser.createdAt,
+        monthlyIncomeTarget: user.monthlyIncomeTarget,
+        alertThresholdPercent: user.alertThresholdPercent,
+        createdAt: user.createdAt,
       },
     };
   }
 
   async forgotPassword(cleanEmail: string) {
+    assertDbConnected();
+
     const resetCode = generateSixDigitCode();
     const resetExpiry = new Date(Date.now() + 15 * 60 * 1000);
-    const status = getDbStatus();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'No account registered with this email address.' };
-      }
-
-      user.passwordResetCode = resetCode;
-      user.passwordResetExpires = resetExpiry;
-      await user.save();
-
-      const emailRes = await sendAuthenticationEmail({
-        to: cleanEmail,
-        subject: 'Reset your FinTrack password',
-        title: 'Password Reset Request',
-        body: `We received a request to reset the password for your FinTrack account. Enter the 6-digit code below to set a new password.`,
-        code: resetCode,
-        actionText: 'Password Reset Code',
-      });
-
-      return {
-        success: true,
-        message: 'Password reset code dispatched to your email.',
-      };
-    }
-
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!fallbackUser) {
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
       throw { statusCode: 404, message: 'No account registered with this email address.' };
     }
 
-    fallbackUser.passwordResetCode = resetCode;
-    fallbackUser.passwordResetExpires = resetExpiry.toISOString();
+    user.passwordResetCode = resetCode;
+    user.passwordResetExpires = resetExpiry;
+    await user.save();
 
     await sendAuthenticationEmail({
       to: cleanEmail,
@@ -405,130 +203,52 @@ export class AuthService {
   }
 
   async resetPassword(cleanEmail: string, cleanCode: string, newPassword: string) {
-    const status = getDbStatus();
+    assertDbConnected();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'No account found with this email.' };
-      }
-
-      if (!user.passwordResetCode || user.passwordResetCode !== cleanCode) {
-        throw { statusCode: 400, message: 'Invalid reset code. Please check your email.' };
-      }
-
-      if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
-        throw { statusCode: 400, message: 'Reset code has expired. Please request a new one.' };
-      }
-
-      user.password = newPassword;
-      user.passwordResetCode = undefined;
-      user.passwordResetExpires = undefined;
-      await user.save();
-
-      const token = generateToken(user._id.toString(), user.email, user.name);
-
-      return {
-        success: true,
-        message: 'Password has been successfully updated!',
-        token,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          jobTitle: user.jobTitle,
-          preferredCurrency: user.preferredCurrency,
-          isDemoUser: user.isDemoUser,
-          isEmailVerified: !!user.isEmailVerified,
-          monthlyIncomeTarget: user.monthlyIncomeTarget,
-          alertThresholdPercent: user.alertThresholdPercent,
-          createdAt: user.createdAt,
-        },
-      };
-    }
-
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!fallbackUser) {
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
       throw { statusCode: 404, message: 'No account found with this email.' };
     }
 
-    if (!fallbackUser.passwordResetCode || fallbackUser.passwordResetCode !== cleanCode) {
-      throw { statusCode: 400, message: 'Invalid reset code. Please check your email.' };
+    if (!user.passwordResetCode || user.passwordResetCode !== cleanCode) {
+      throw { statusCode: 400, message: 'Invalid reset code. Please check the latest code in your email.' };
     }
 
-    if (fallbackUser.passwordResetExpires && new Date() > new Date(fallbackUser.passwordResetExpires)) {
+    if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
       throw { statusCode: 400, message: 'Reset code has expired. Please request a new one.' };
     }
 
-    const salt = await bcrypt.genSalt(10);
-    fallbackUser.passwordHash = await bcrypt.hash(newPassword, salt);
-    fallbackUser.passwordResetCode = undefined;
-    fallbackUser.passwordResetExpires = undefined;
-
-    const token = generateToken(fallbackUser.id, fallbackUser.email, fallbackUser.name);
+    user.password = newPassword;
+    user.passwordResetCode = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
 
     return {
       success: true,
-      message: 'Password has been successfully updated!',
-      token,
-      user: {
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        jobTitle: fallbackUser.jobTitle,
-        preferredCurrency: fallbackUser.preferredCurrency,
-        isDemoUser: fallbackUser.isDemoUser,
-        isEmailVerified: !!fallbackUser.isEmailVerified,
-        monthlyIncomeTarget: fallbackUser.monthlyIncomeTarget,
-        alertThresholdPercent: fallbackUser.alertThresholdPercent,
-        createdAt: fallbackUser.createdAt,
-      },
+      message: 'Password has been successfully updated. You can now log in.',
     };
   }
 
   async sendOtpLogin(cleanEmail: string) {
+    assertDbConnected();
+
     const otpCode = generateSixDigitCode();
     const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
-    const status = getDbStatus();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'No account found for this email. Please create an account first.' };
-      }
-
-      user.loginOtpCode = otpCode;
-      user.loginOtpExpires = otpExpiry;
-      await user.save();
-
-      const emailRes = await sendAuthenticationEmail({
-        to: cleanEmail,
-        subject: 'Your FinTrack Login Code',
-        title: 'Sign In with Email Code',
-        body: `Hello ${user.name}, use the one-time code below to sign in directly to your FinTrack workspace without entering your password.`,
-        code: otpCode,
-        actionText: 'One-Time Login Code',
-      });
-
-      return {
-        success: true,
-        message: 'One-time login code sent to your email.',
-      };
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      throw { statusCode: 404, message: 'No account found for this email. Please register first.' };
     }
 
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!fallbackUser) {
-      throw { statusCode: 404, message: 'No account found for this email. Please create an account first.' };
-    }
-
-    fallbackUser.loginOtpCode = otpCode;
-    fallbackUser.loginOtpExpires = otpExpiry.toISOString();
+    user.loginOtpCode = otpCode;
+    user.loginOtpExpires = otpExpiry;
+    await user.save();
 
     await sendAuthenticationEmail({
       to: cleanEmail,
       subject: 'Your FinTrack Login Code',
       title: 'Sign In with Email Code',
-      body: `Hello ${fallbackUser.name}, use the one-time code below to sign in directly to your FinTrack workspace without entering your password.`,
+      body: `Hello ${user.name}, use the one-time code below to sign in directly to your FinTrack workspace without entering your password.`,
       code: otpCode,
       actionText: 'One-Time Login Code',
     });
@@ -540,199 +260,102 @@ export class AuthService {
   }
 
   async verifyOtpLogin(cleanEmail: string, cleanCode: string) {
-    const status = getDbStatus();
+    assertDbConnected();
 
-    if (status.isConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        throw { statusCode: 404, message: 'Account not found.' };
-      }
-
-      if (!user.loginOtpCode || user.loginOtpCode !== cleanCode) {
-        throw { statusCode: 400, message: 'Invalid login code. Please check your email.' };
-      }
-
-      if (user.loginOtpExpires && new Date() > user.loginOtpExpires) {
-        throw { statusCode: 400, message: 'Login code has expired. Please request a new one.' };
-      }
-
-      user.isEmailVerified = true;
-      user.loginOtpCode = undefined;
-      user.loginOtpExpires = undefined;
-      await user.save();
-
-      const token = generateToken(user._id.toString(), user.email, user.name);
-
-      return {
-        success: true,
-        token,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          jobTitle: user.jobTitle,
-          preferredCurrency: user.preferredCurrency,
-          isDemoUser: user.isDemoUser,
-          isEmailVerified: true,
-          monthlyIncomeTarget: user.monthlyIncomeTarget,
-          alertThresholdPercent: user.alertThresholdPercent,
-          createdAt: user.createdAt,
-        },
-      };
-    }
-
-    const fallbackUser = fallbackStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!fallbackUser) {
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
       throw { statusCode: 404, message: 'Account not found.' };
     }
 
-    if (!fallbackUser.loginOtpCode || fallbackUser.loginOtpCode !== cleanCode) {
+    if (!user.loginOtpCode || user.loginOtpCode !== cleanCode) {
       throw { statusCode: 400, message: 'Invalid login code. Please check your email.' };
     }
 
-    if (fallbackUser.loginOtpExpires && new Date() > new Date(fallbackUser.loginOtpExpires)) {
+    if (user.loginOtpExpires && new Date() > user.loginOtpExpires) {
       throw { statusCode: 400, message: 'Login code has expired. Please request a new one.' };
     }
 
-    fallbackUser.isEmailVerified = true;
-    fallbackUser.loginOtpCode = undefined;
-    fallbackUser.loginOtpExpires = undefined;
+    user.isEmailVerified = true;
+    user.loginOtpCode = undefined;
+    user.loginOtpExpires = undefined;
+    await user.save();
 
-    const token = generateToken(fallbackUser.id, fallbackUser.email, fallbackUser.name);
+    const token = generateToken(user._id.toString(), user.email, user.name);
 
     return {
-      success: true,
       token,
       user: {
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        jobTitle: fallbackUser.jobTitle,
-        preferredCurrency: fallbackUser.preferredCurrency,
-        isDemoUser: fallbackUser.isDemoUser,
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        jobTitle: user.jobTitle,
+        preferredCurrency: user.preferredCurrency,
         isEmailVerified: true,
-        monthlyIncomeTarget: fallbackUser.monthlyIncomeTarget,
-        alertThresholdPercent: fallbackUser.alertThresholdPercent,
-        createdAt: fallbackUser.createdAt,
+        monthlyIncomeTarget: user.monthlyIncomeTarget,
+        alertThresholdPercent: user.alertThresholdPercent,
+        createdAt: user.createdAt,
       },
     };
   }
 
-  getDemoUser() {
-    const demoUser = fallbackStore.users.find((u) => u.isDemoUser) || {
-      id: 'user-demo-alex',
-      name: 'Alex Morgan',
-      email: 'alex.morgan@fintrack.app',
-      jobTitle: 'Senior Product Designer',
-      preferredCurrency: 'USD',
-      isDemoUser: true,
-      isEmailVerified: true,
-      monthlyIncomeTarget: 8500,
-      alertThresholdPercent: 80,
-      createdAt: '2026-01-15T09:00:00Z',
-    };
-
-    const token = generateToken(demoUser.id, demoUser.email, demoUser.name);
-    return { token, user: demoUser };
-  }
-
   async getMe(userId: string) {
-    const status = getDbStatus();
+    assertDbConnected();
 
-    if (status.isConnected) {
-      const user = await User.findById(userId).select('-password');
-      if (user) {
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          jobTitle: user.jobTitle,
-          preferredCurrency: user.preferredCurrency,
-          isDemoUser: user.isDemoUser,
-          isEmailVerified: !!user.isEmailVerified,
-          monthlyIncomeTarget: user.monthlyIncomeTarget,
-          alertThresholdPercent: user.alertThresholdPercent,
-          createdAt: user.createdAt,
-        };
-      }
-    }
-
-    const user = fallbackStore.users.find((u) => u.id === userId);
+    const user = await User.findById(userId).select('-password');
     if (!user) {
       throw { statusCode: 404, message: 'User profile not found.' };
     }
 
     return {
-      id: user.id,
+      id: user._id.toString(),
       name: user.name,
       email: user.email,
       jobTitle: user.jobTitle,
       preferredCurrency: user.preferredCurrency,
-      isDemoUser: user.isDemoUser,
-      isEmailVerified: !!user.isEmailVerified,
+      isEmailVerified: user.isEmailVerified,
       monthlyIncomeTarget: user.monthlyIncomeTarget,
       alertThresholdPercent: user.alertThresholdPercent,
       createdAt: user.createdAt,
     };
   }
 
-  async updateProfile(userId: string, data: { name?: string; jobTitle?: string; preferredCurrency?: string; monthlyIncomeTarget?: number; alertThresholdPercent?: number }) {
-    const { name, jobTitle, preferredCurrency, monthlyIncomeTarget, alertThresholdPercent } = data;
-    const status = getDbStatus();
+  async updateProfile(
+    userId: string,
+    updates: {
+      name?: string;
+      jobTitle?: string;
+      preferredCurrency?: string;
+      monthlyIncomeTarget?: number;
+      alertThresholdPercent?: number;
+    }
+  ) {
+    assertDbConnected();
 
-    if (status.isConnected) {
-      const updated = await User.findByIdAndUpdate(
-        userId,
-        {
-          ...(name ? { name: name.trim() } : {}),
-          ...(jobTitle !== undefined ? { jobTitle } : {}),
-          ...(preferredCurrency ? { preferredCurrency } : {}),
-          ...(monthlyIncomeTarget !== undefined ? { monthlyIncomeTarget } : {}),
-          ...(alertThresholdPercent !== undefined ? { alertThresholdPercent } : {}),
-        },
-        { new: true }
-      ).select('-password');
+    const { name, jobTitle, preferredCurrency, monthlyIncomeTarget, alertThresholdPercent } = updates;
+    const toUpdate: any = {};
 
-      if (updated) {
-        return {
-          id: updated._id.toString(),
-          name: updated.name,
-          email: updated.email,
-          jobTitle: updated.jobTitle,
-          preferredCurrency: updated.preferredCurrency,
-          isDemoUser: updated.isDemoUser,
-          isEmailVerified: !!updated.isEmailVerified,
-          monthlyIncomeTarget: updated.monthlyIncomeTarget,
-          alertThresholdPercent: updated.alertThresholdPercent,
-          createdAt: updated.createdAt,
-        };
-      }
+    if (name) toUpdate.name = name.trim();
+    if (jobTitle !== undefined) toUpdate.jobTitle = jobTitle;
+    if (preferredCurrency) toUpdate.preferredCurrency = preferredCurrency;
+    if (monthlyIncomeTarget !== undefined) toUpdate.monthlyIncomeTarget = monthlyIncomeTarget;
+    if (alertThresholdPercent !== undefined) toUpdate.alertThresholdPercent = alertThresholdPercent;
+
+    const updated = await User.findByIdAndUpdate(userId, toUpdate, { new: true }).select('-password');
+    if (!updated) {
+      throw { statusCode: 404, message: 'User profile not found.' };
     }
 
-    const idx = fallbackStore.users.findIndex((u) => u.id === userId);
-    if (idx !== -1) {
-      if (name) fallbackStore.users[idx].name = name.trim();
-      if (jobTitle !== undefined) fallbackStore.users[idx].jobTitle = jobTitle;
-      if (preferredCurrency) fallbackStore.users[idx].preferredCurrency = preferredCurrency;
-      if (monthlyIncomeTarget !== undefined) fallbackStore.users[idx].monthlyIncomeTarget = monthlyIncomeTarget;
-      if (alertThresholdPercent !== undefined) fallbackStore.users[idx].alertThresholdPercent = alertThresholdPercent;
-
-      const u = fallbackStore.users[idx];
-      return {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        jobTitle: u.jobTitle,
-        preferredCurrency: u.preferredCurrency,
-        isDemoUser: u.isDemoUser,
-        isEmailVerified: !!u.isEmailVerified,
-        monthlyIncomeTarget: u.monthlyIncomeTarget,
-        alertThresholdPercent: u.alertThresholdPercent,
-        createdAt: u.createdAt,
-      };
-    }
-
-    throw { statusCode: 404, message: 'User profile not found.' };
+    return {
+      id: updated._id.toString(),
+      name: updated.name,
+      email: updated.email,
+      jobTitle: updated.jobTitle,
+      preferredCurrency: updated.preferredCurrency,
+      isEmailVerified: updated.isEmailVerified,
+      monthlyIncomeTarget: updated.monthlyIncomeTarget,
+      alertThresholdPercent: updated.alertThresholdPercent,
+      createdAt: updated.createdAt,
+    };
   }
 }
 

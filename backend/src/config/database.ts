@@ -1,37 +1,50 @@
 import mongoose from 'mongoose';
 import { env } from './env';
+import { CategoryModel } from '../models/Category';
+import { SYSTEM_DEFAULT_CATEGORIES } from './defaultCategories';
 
 let isConnected = false;
 let dbError: string | null = null;
+
+async function seedDefaultCategoriesIfEmpty() {
+  try {
+    const count = await CategoryModel.countDocuments({ isDefault: true });
+    if (count === 0) {
+      await CategoryModel.insertMany(SYSTEM_DEFAULT_CATEGORIES);
+      console.log('[MongoDB] Initialized default financial categories.');
+    }
+  } catch (err: any) {
+    console.warn('[MongoDB] Default category check note:', err.message || err);
+  }
+}
 
 export const connectToDatabase = async (): Promise<boolean> => {
   const uri = env.MONGODB_URI;
 
   if (!uri || uri.includes('<password>')) {
-    dbError = 'MONGODB_URI contains placeholder <password> or is not configured.';
-    console.warn('\x1b[33m%s\x1b[0m', `[MongoDB Notice] ${dbError}`);
-    console.warn('\x1b[33m%s\x1b[0m', '[MongoDB Notice] Using resilient local store. To connect to MongoDB, edit .env with your real MongoDB Atlas credentials.');
+    dbError = 'MONGODB_URI is not configured or contains placeholder <password>.';
+    console.error('\x1b[31m%s\x1b[0m', `[MongoDB Error] ${dbError}`);
     return false;
   }
 
   try {
-    // Sanitize any accidental double slashes in the path part (e.g. .mongodb.net//database -> .mongodb.net/database)
     const sanitizedUri = uri.replace(/\.mongodb\.net\/\/+/, '.mongodb.net/');
 
     mongoose.set('strictQuery', false);
     await mongoose.connect(sanitizedUri, {
-      serverSelectionTimeoutMS: 4000,
+      serverSelectionTimeoutMS: 5000,
     });
 
     isConnected = true;
     dbError = null;
     console.log('\x1b[32m%s\x1b[0m', '[MongoDB] Connected successfully to live database.');
+
+    await seedDefaultCategoriesIfEmpty();
     return true;
   } catch (error: any) {
     isConnected = false;
     dbError = error.message || 'Failed to connect to MongoDB instance';
-    console.warn('\x1b[31m%s\x1b[0m', `[MongoDB Warning] Could not connect: ${dbError}`);
-    console.warn('\x1b[33m%s\x1b[0m', '[MongoDB] Falling back to persistent fallback store to keep app fully operational.');
+    console.error('\x1b[31m%s\x1b[0m', `[MongoDB Error] Could not connect: ${dbError}`);
     return false;
   }
 };
@@ -43,4 +56,14 @@ export const getDbStatus = () => {
     readyState: mongoose.connection.readyState,
     databaseName: mongoose.connection.name || 'fintrack',
   };
+};
+
+export const assertDbConnected = () => {
+  const status = getDbStatus();
+  if (!status.isConnected) {
+    throw {
+      statusCode: 503,
+      message: 'Database service is currently unavailable. Please verify MongoDB connection.',
+    };
+  }
 };

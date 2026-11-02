@@ -98,8 +98,8 @@ const MainApp: React.FC = () => {
           onNavigate={setCurrentTab}
         />
 
-        {/* Email Verification Reminder Banner (when unverified and not demo) */}
-        {!currentUser?.isEmailVerified && !currentUser?.isDemoUser && (
+        {/* Email Verification Reminder Banner (when unverified) */}
+        {!currentUser?.isEmailVerified && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-8 py-2.5 flex items-center justify-between text-xs text-amber-900 transition-colors">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-amber-600 shrink-0" />

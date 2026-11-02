@@ -1,6 +1,6 @@
 # FinTrack - Personal Finance & Budget Tracker
 
-FinTrack is a full-stack personal finance application built with Express.js, React 19, TypeScript, Tailwind CSS, and MongoDB (with a resilient in-memory fallback store).
+FinTrack is a full-stack personal finance application built with Express.js, React 19, TypeScript, Tailwind CSS, and MongoDB.
 
 ## Architecture Overview
 
@@ -19,7 +19,6 @@ financial-tracking-app/
 │   │   ├── services/        # Business logic & data operations
 │   │   │   ├── auth.service.ts
 │   │   │   ├── email.service.ts
-│   │   │   ├── fallbackStore.service.ts
 │   │   │   ├── transaction.service.ts
 │   │   │   ├── budget.service.ts
 │   │   │   └── category.service.ts
@@ -99,9 +98,9 @@ cp .env.example .env
 
 Key environment variables:
 - `PORT`: HTTP server port (default: `3000`)
-- `MONGODB_URI`: MongoDB connection string. If omitted or unconfigured, FinTrack runs automatically in resilient fallback store mode with complete demo data.
+- `MONGODB_URI`: MongoDB connection string for persistent database storage.
 - `JWT_SECRET`: Secret key for signing JWT session tokens.
-- `SMTP_*`: Optional SMTP server credentials for real email verification codes. If omitted, codes are displayed in the UI notification sandbox.
+- `SMTP_*`: SMTP server credentials for real email verification codes.
 
 ### Running Development Server
 

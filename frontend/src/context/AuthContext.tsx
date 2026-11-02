@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { DEMO_USER } from '../utils/mockData';
 import { authApiService } from '../services/auth.service';
 import { STORAGE_KEYS } from '../constants';
 
@@ -27,7 +26,6 @@ interface AuthContextType {
   checkDbStatus: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, email: string, password: string, preferredCurrency: string) => Promise<{ success: boolean; previewCode?: string; error?: string }>;
-  loginAsDemo: () => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   refreshUserProfile: () => Promise<void>;
@@ -115,11 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(data.token);
       return { success: true };
     } catch (err: any) {
-      if (cleanEmail === DEMO_USER.email.toLowerCase() && password.length >= 6) {
-        setCurrentUser(DEMO_USER);
-        setToken('demo-token');
-        return { success: true };
-      }
       return { success: false, error: err.message || 'Login failed. Please check credentials.' };
     }
   };
@@ -304,18 +297,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginAsDemo = async () => {
-    try {
-      const data = await authApiService.demoLogin();
-      setCurrentUser(data.user);
-      setToken(data.token);
-      return;
-    } catch {}
-
-    setCurrentUser(DEMO_USER);
-    setToken('demo-token');
-  };
-
   const logout = () => {
     setCurrentUser(null);
     setToken(null);
@@ -348,7 +329,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkDbStatus,
         login,
         register,
-        loginAsDemo,
         logout,
         updateProfile,
         refreshUserProfile,

@@ -17,7 +17,6 @@ import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatCurrency, formatPercentage } from '@/utils/currencies';
 import { renderCategoryIcon } from '@/utils/categoryIcons';
-import { SUGGESTED_DEFAULT_BUDGETS } from '@/utils/mockData';
 
 export const BudgetsPage: React.FC = () => {
   const {
@@ -119,12 +118,6 @@ export const BudgetsPage: React.FC = () => {
     });
   };
 
-  const handleLoadDefaults = () => {
-    SUGGESTED_DEFAULT_BUDGETS.forEach((b) => {
-      setCategoryBudget(b.categoryId, b.monthlyLimit, currentMonth);
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* Title & Actions */}
@@ -139,15 +132,6 @@ export const BudgetsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {budgets.length === 0 && (
-            <button
-              onClick={handleLoadDefaults}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-xs transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-              <span>{t('bgt.suggested', 'Load Suggested Budgets')}</span>
-            </button>
-          )}
           <button
             onClick={() => handleOpenBudgetModal()}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"
@@ -221,12 +205,6 @@ export const BudgetsPage: React.FC = () => {
             {t('bgt.emptyDesc', 'Setting monthly spending targets helps you control expenses and reach your savings goals faster.')}
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
-            <button
-              onClick={handleLoadDefaults}
-              className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-            >
-              {t('bgt.suggested', 'Load Suggested Budgets')}
-            </button>
             <button
               onClick={() => handleOpenBudgetModal()}
               className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"

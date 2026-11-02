@@ -7,7 +7,6 @@ export interface IUser extends Document {
   password?: string;
   jobTitle?: string;
   preferredCurrency: string;
-  isDemoUser: boolean;
   isEmailVerified: boolean;
   emailVerificationCode?: string;
   emailVerificationExpires?: Date;
@@ -28,7 +27,6 @@ const UserSchema: Schema = new Schema(
     password: { type: String, required: true },
     jobTitle: { type: String, default: 'Personal Account' },
     preferredCurrency: { type: String, default: 'USD' },
-    isDemoUser: { type: Boolean, default: false },
     isEmailVerified: { type: Boolean, default: false },
     emailVerificationCode: { type: String },
     emailVerificationExpires: { type: Date },

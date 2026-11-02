@@ -89,12 +89,6 @@ export const authApiService = {
     });
   },
 
-  demoLogin(): Promise<AuthResponse> {
-    return request<AuthResponse>('/api/auth/demo', {
-      method: 'POST',
-    });
-  },
-
   updateProfile(profileData: {
     name?: string;
     jobTitle?: string;

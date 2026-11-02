@@ -16,7 +16,6 @@ router.post('/forgot-password', authController.forgotPassword.bind(authControlle
 router.post('/reset-password', authController.resetPassword.bind(authController));
 router.post('/send-otp-login', authController.sendOtpLogin.bind(authController));
 router.post('/verify-otp-login', authController.verifyOtpLogin.bind(authController));
-router.post('/demo', authController.demo.bind(authController));
 
 // Authenticated user profile routes
 router.get('/me', authenticateToken, authController.getMe.bind(authController));

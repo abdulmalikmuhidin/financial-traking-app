@@ -12,7 +12,6 @@ export interface User {
   email: string;
   jobTitle?: string;
   preferredCurrency: string;
-  isDemoUser: boolean;
   isEmailVerified?: boolean;
   monthlyIncomeTarget?: number;
   alertThresholdPercent?: number;

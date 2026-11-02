@@ -183,11 +183,6 @@ export class AuthController {
     }
   }
 
-  demo(req: Request, res: Response) {
-    const result = authService.getDemoUser();
-    return res.json(result);
-  }
-
   async getMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id;

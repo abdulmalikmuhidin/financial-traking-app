@@ -8,11 +8,7 @@ import {
 } from '../types';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
-import { 
-  DEFAULT_CATEGORIES, 
-  INITIAL_DEMO_TRANSACTIONS, 
-  SUGGESTED_DEFAULT_BUDGETS 
-} from '../utils/mockData';
+import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { convertCurrency, formatCurrency } from '../utils/currencies';
 import { financeApiService } from '../services/finance.service';
 import { STORAGE_KEYS } from '../constants';
@@ -120,7 +116,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const saved = localStorage.getItem(STORAGE_KEY_TX);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return currentUser?.isDemoUser ? INITIAL_DEMO_TRANSACTIONS : [];
+    return [];
   });
 
   // Budgets
@@ -129,7 +125,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const saved = localStorage.getItem(STORAGE_KEY_BUDGETS);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return currentUser?.isDemoUser ? SUGGESTED_DEFAULT_BUDGETS : [];
+    return [];
   });
 
   // UI state
