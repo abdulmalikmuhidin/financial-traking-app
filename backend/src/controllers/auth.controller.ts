@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { authService } from '../services/auth.service';
+import { AuthService } from '../services/auth.service';
 import { AuthValidator } from '../validators/auth.validator';
 import { AuthRequest } from '../types';
 import { getDbStatus } from '../config/database';
@@ -57,7 +57,7 @@ export class AuthController {
         try {
           const decoded = jwt.verify(authHeader.split(' ')[1], env.JWT_SECRET) as any;
           targetEmail = decoded.email.toLowerCase();
-        } catch {}
+        } catch { }
       }
 
       if (!targetEmail || !AuthValidator.isValidEmail(targetEmail)) {
@@ -85,7 +85,7 @@ export class AuthController {
         try {
           const decoded = jwt.verify(authHeader.split(' ')[1], env.JWT_SECRET) as any;
           targetEmail = decoded.email.toLowerCase();
-        } catch {}
+        } catch { }
       }
 
       const validationError = AuthValidator.validateVerifyEmail(targetEmail, code);
