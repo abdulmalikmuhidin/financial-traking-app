@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';//this is a Node.js module for sending emails using SMTP(S). It provides a simple API to send emails and supports various transport methods, including SMTP, sendmail, and more.
 import { env } from '../config/env';
 
 interface SendEmailOptions {
@@ -13,32 +13,40 @@ interface SendEmailOptions {
 export interface EmailSendResult {
   sent: boolean;
   message: string;
-  previewCode?: string;
 }
 
 /**
- * Creates nodemailer transporter if SMTP credentials are configured in environment.
+ * Creates nodemailer transporter if SMTP credentials or service are configured in environment.
  */
 function getTransporter() {
+  const service = env.SMTP_SERVICE;
   const host = env.SMTP_HOST;
   const port = env.SMTP_PORT;
   const user = env.SMTP_USER;
   const pass = env.SMTP_PASS;
 
+  if (service && user && pass) {
+    return nodemailer.createTransport({
+      service,
+      auth: { user, pass },
+    });
+  }
+
   if (host && user && pass) {
     return nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
+      secure: env.SMTP_SECURE !== undefined ? env.SMTP_SECURE : port === 465,
       auth: { user, pass },
     });
   }
+
   return null;
 }
 
 /**
- * Send an email (verification, OTP login, or password reset).
- * Gracefully falls back to preview mode if SMTP is not configured.
+ * Send an email (verification, OTP login, or password reset) directly to the user's real email address.
+ * Never leaks the verification code to the client/frontend.
  */
 export async function sendAuthenticationEmail(options: SendEmailOptions): Promise<EmailSendResult> {
   const { to, subject, title, body, code, actionText } = options;
@@ -89,7 +97,7 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
 
   if (transporter) {
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from,
         to,
         subject,
@@ -97,27 +105,31 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
         html: htmlContent,
       });
 
-      console.log(`[EMAIL DISPATCH] Sent to ${to} via SMTP: ${subject}`);
+      console.log(`[EMAIL DISPATCH] Sent to ${to} via SMTP: ${subject} (Message ID: ${info.messageId})`);
       return {
         sent: true,
         message: 'Security code successfully dispatched to your email address.',
       };
     } catch (err: any) {
-      console.warn(`[EMAIL DISPATCH WARNING] SMTP failed, using sandbox fallback: ${err.message}`);
+      console.error(`[EMAIL DISPATCH ERROR] Failed to send email to ${to} via SMTP:`, err.message || err);
     }
   }
 
-  // Fallback / Development Simulation mode:
-  console.log('---------------------------------------------------------');
-  console.log(`[SIMULATED EMAIL DISPATCH]`);
-  console.log(`TO: ${to}`);
-  console.log(`SUBJECT: ${subject}`);
-  if (code) console.log(`CODE: ${code}`);
-  console.log('---------------------------------------------------------');
+  // If SMTP is not yet configured or failed in development, print strictly to server console
+  console.warn(
+    `[EMAIL NOTICE] Real email could not be sent to ${to}. Please configure SMTP settings (e.g. SMTP_USER, SMTP_PASS, SMTP_SERVICE or SMTP_HOST) in backend/.env.`
+  );
+  if (code) {
+    console.log('---------------------------------------------------------');
+    console.log(`[SERVER-SIDE LOG ONLY - NOT SENT TO CLIENT]`);
+    console.log(`TO: ${to}`);
+    console.log(`SUBJECT: ${subject}`);
+    console.log(`CODE: ${code}`);
+    console.log('---------------------------------------------------------');
+  }
 
   return {
-    sent: true,
-    message: 'Verification code generated and dispatched.',
-    previewCode: code,
+    sent: false,
+    message: 'Verification code dispatched. Please check your email inbox.',
   };
 }

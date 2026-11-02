@@ -59,7 +59,6 @@ export class AuthService {
 
       return {
         token,
-        previewCode: emailRes.previewCode,
         user: {
           id: newUser._id.toString(),
           name: newUser.name,
@@ -118,7 +117,6 @@ export class AuthService {
 
     return {
       token,
-      previewCode: emailRes.previewCode,
       user: {
         id: newStoredUser.id,
         name: newStoredUser.name,
@@ -224,7 +222,6 @@ export class AuthService {
       return {
         success: true,
         message: 'A fresh verification code has been dispatched to your email.',
-        previewCode: emailRes.previewCode,
       };
     }
 
@@ -236,7 +233,7 @@ export class AuthService {
     fallbackUser.emailVerificationCode = verificationCode;
     fallbackUser.emailVerificationExpires = verificationExpiry.toISOString();
 
-    const emailRes = await sendAuthenticationEmail({
+    await sendAuthenticationEmail({
       to: targetEmail,
       subject: 'Your FinTrack Email Verification Code',
       title: 'Verify Your Email',
@@ -248,7 +245,6 @@ export class AuthService {
     return {
       success: true,
       message: 'A fresh verification code has been dispatched to your email.',
-      previewCode: emailRes.previewCode,
     };
   }
 
@@ -382,7 +378,6 @@ export class AuthService {
       return {
         success: true,
         message: 'Password reset code dispatched to your email.',
-        previewCode: emailRes.previewCode,
       };
     }
 
@@ -394,7 +389,7 @@ export class AuthService {
     fallbackUser.passwordResetCode = resetCode;
     fallbackUser.passwordResetExpires = resetExpiry.toISOString();
 
-    const emailRes = await sendAuthenticationEmail({
+    await sendAuthenticationEmail({
       to: cleanEmail,
       subject: 'Reset your FinTrack password',
       title: 'Password Reset Request',
@@ -406,7 +401,6 @@ export class AuthService {
     return {
       success: true,
       message: 'Password reset code dispatched to your email.',
-      previewCode: emailRes.previewCode,
     };
   }
 
@@ -519,7 +513,6 @@ export class AuthService {
       return {
         success: true,
         message: 'One-time login code sent to your email.',
-        previewCode: emailRes.previewCode,
       };
     }
 
@@ -531,7 +524,7 @@ export class AuthService {
     fallbackUser.loginOtpCode = otpCode;
     fallbackUser.loginOtpExpires = otpExpiry.toISOString();
 
-    const emailRes = await sendAuthenticationEmail({
+    await sendAuthenticationEmail({
       to: cleanEmail,
       subject: 'Your FinTrack Login Code',
       title: 'Sign In with Email Code',
@@ -543,7 +536,6 @@ export class AuthService {
     return {
       success: true,
       message: 'One-time login code sent to your email.',
-      previewCode: emailRes.previewCode,
     };
   }
 

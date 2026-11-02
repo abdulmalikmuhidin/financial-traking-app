@@ -49,5 +49,7 @@ export const env = {
   SMTP_PORT: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
+  SMTP_SERVICE: process.env.SMTP_SERVICE || '',
+  SMTP_SECURE: process.env.SMTP_SECURE !== undefined ? process.env.SMTP_SECURE === 'true' : undefined,
   EMAIL_FROM: process.env.EMAIL_FROM || '"FinTrack Security" <noreply@fintrack.app>',
 };

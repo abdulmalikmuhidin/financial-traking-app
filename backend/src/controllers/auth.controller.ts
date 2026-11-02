@@ -60,8 +60,8 @@ export class AuthController {
         } catch {}
       }
 
-      if (!targetEmail) {
-        return res.status(400).json({ error: 'Email address is required.' });
+      if (!targetEmail || !AuthValidator.isValidEmail(targetEmail)) {
+        return res.status(400).json({ error: 'A valid email address is required.' });
       }
 
       const result = await authService.sendVerification(targetEmail);
