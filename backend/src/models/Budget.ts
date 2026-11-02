@@ -22,5 +22,5 @@ const BudgetSchema: Schema = new Schema(
 // Compound index so a user has one budget per category per month
 BudgetSchema.index({ userId: 1, categoryId: 1, month: 1 }, { unique: true });
 
-export const BudgetModel = 
-  mongoose.models.Budget || mongoose.model<IBudget>('Budget', BudgetSchema);
+export const BudgetModel: mongoose.Model<IBudget> = 
+  (mongoose.models.Budget as mongoose.Model<IBudget>) || mongoose.model<IBudget>('Budget', BudgetSchema);
