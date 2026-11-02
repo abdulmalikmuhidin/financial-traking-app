@@ -1,16 +1,11 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/User';
 import { assertDbConnected } from '../config/database';
-import { sendAuthenticationEmail } from './email.service';
+import { otpService } from './otp.service';
 import { env } from '../config/env';
 
 export const generateToken = (id: string, email: string, name: string) => {
   return jwt.sign({ id, email, name }, env.JWT_SECRET, { expiresIn: '30d' });
-};
-
-export const generateSixDigitCode = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 export class AuthService {
@@ -21,9 +16,6 @@ export class AuthService {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const currency = preferredCurrency || 'USD';
-
-    const verificationCode = generateSixDigitCode();
-    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
@@ -39,20 +31,12 @@ export class AuthService {
       monthlyIncomeTarget: 5000,
       alertThresholdPercent: 80,
       isEmailVerified: false,
-      emailVerificationCode: verificationCode,
-      emailVerificationExpires: verificationExpiry,
     });
 
     await newUser.save();
 
-    await sendAuthenticationEmail({
-      to: cleanEmail,
-      subject: 'Verify your FinTrack email address',
-      title: 'Confirm Your Email Address',
-      body: `Welcome to FinTrack, ${cleanName}! Please enter the following 6-digit security code to verify your account.`,
-      code: verificationCode,
-      actionText: 'Email Verification Code',
-    });
+    // Securely generate, hash, and email the OTP verification code
+    await otpService.createAndSendOtp(cleanEmail, 'email_verification', cleanName);
 
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.name);
 
@@ -107,52 +91,34 @@ export class AuthService {
   async sendVerification(targetEmail: string) {
     assertDbConnected();
 
-    const verificationCode = generateSixDigitCode();
-    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000);
-
-    const user = await User.findOne({ email: targetEmail });
+    const cleanEmail = targetEmail.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       throw { statusCode: 404, message: 'No user account found for this email.' };
     }
 
-    user.emailVerificationCode = verificationCode;
-    user.emailVerificationExpires = verificationExpiry;
-    await user.save();
-
-    await sendAuthenticationEmail({
-      to: targetEmail,
-      subject: 'Your FinTrack Email Verification Code',
-      title: 'Verify Your Email',
-      body: `Hello ${user.name}, use the code below to verify your email address on FinTrack.`,
-      code: verificationCode,
-      actionText: 'Verification Code',
-    });
+    const result = await otpService.createAndSendOtp(cleanEmail, 'email_verification', user.name);
 
     return {
       success: true,
-      message: 'A fresh verification code has been dispatched to your email.',
+      message: result.message,
+      cooldownSeconds: result.cooldownSeconds,
     };
   }
 
   async verifyEmail(targetEmail: string, cleanCode: string) {
     assertDbConnected();
 
-    const user = await User.findOne({ email: targetEmail });
+    const cleanEmail = targetEmail.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       throw { statusCode: 404, message: 'No account found with this email address.' };
     }
 
-    if (!user.emailVerificationCode || user.emailVerificationCode !== cleanCode) {
-      throw { statusCode: 400, message: 'Invalid verification code. Please check your email and try again.' };
-    }
-
-    if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
-      throw { statusCode: 400, message: 'Verification code has expired. Please request a fresh one.' };
-    }
+    // Verify OTP securely against hashed database record
+    await otpService.verifyOtp(cleanEmail, cleanCode, 'email_verification');
 
     user.isEmailVerified = true;
-    user.emailVerificationCode = undefined;
-    user.emailVerificationExpires = undefined;
     await user.save();
 
     return {
@@ -175,52 +141,34 @@ export class AuthService {
   async forgotPassword(cleanEmail: string) {
     assertDbConnected();
 
-    const resetCode = generateSixDigitCode();
-    const resetExpiry = new Date(Date.now() + 15 * 60 * 1000);
-
-    const user = await User.findOne({ email: cleanEmail });
+    const email = cleanEmail.trim().toLowerCase();
+    const user = await User.findOne({ email });
     if (!user) {
       throw { statusCode: 404, message: 'No account registered with this email address.' };
     }
 
-    user.passwordResetCode = resetCode;
-    user.passwordResetExpires = resetExpiry;
-    await user.save();
-
-    await sendAuthenticationEmail({
-      to: cleanEmail,
-      subject: 'Reset your FinTrack password',
-      title: 'Password Reset Request',
-      body: `We received a request to reset the password for your FinTrack account. Enter the 6-digit code below to set a new password.`,
-      code: resetCode,
-      actionText: 'Password Reset Code',
-    });
+    const result = await otpService.createAndSendOtp(email, 'password_reset', user.name);
 
     return {
       success: true,
-      message: 'Password reset code dispatched to your email.',
+      message: result.message,
+      cooldownSeconds: result.cooldownSeconds,
     };
   }
 
   async resetPassword(cleanEmail: string, cleanCode: string, newPassword: string) {
     assertDbConnected();
 
-    const user = await User.findOne({ email: cleanEmail });
+    const email = cleanEmail.trim().toLowerCase();
+    const user = await User.findOne({ email });
     if (!user) {
       throw { statusCode: 404, message: 'No account found with this email.' };
     }
 
-    if (!user.passwordResetCode || user.passwordResetCode !== cleanCode) {
-      throw { statusCode: 400, message: 'Invalid reset code. Please check the latest code in your email.' };
-    }
-
-    if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
-      throw { statusCode: 400, message: 'Reset code has expired. Please request a new one.' };
-    }
+    // Verify OTP securely against hashed database record
+    await otpService.verifyOtp(email, cleanCode, 'password_reset');
 
     user.password = newPassword;
-    user.passwordResetCode = undefined;
-    user.passwordResetExpires = undefined;
     await user.save();
 
     return {
@@ -232,52 +180,34 @@ export class AuthService {
   async sendOtpLogin(cleanEmail: string) {
     assertDbConnected();
 
-    const otpCode = generateSixDigitCode();
-    const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
-
-    const user = await User.findOne({ email: cleanEmail });
+    const email = cleanEmail.trim().toLowerCase();
+    const user = await User.findOne({ email });
     if (!user) {
       throw { statusCode: 404, message: 'No account found for this email. Please register first.' };
     }
 
-    user.loginOtpCode = otpCode;
-    user.loginOtpExpires = otpExpiry;
-    await user.save();
-
-    await sendAuthenticationEmail({
-      to: cleanEmail,
-      subject: 'Your FinTrack Login Code',
-      title: 'Sign In with Email Code',
-      body: `Hello ${user.name}, use the one-time code below to sign in directly to your FinTrack workspace without entering your password.`,
-      code: otpCode,
-      actionText: 'One-Time Login Code',
-    });
+    const result = await otpService.createAndSendOtp(email, 'login_otp', user.name);
 
     return {
       success: true,
-      message: 'One-time login code sent to your email.',
+      message: result.message,
+      cooldownSeconds: result.cooldownSeconds,
     };
   }
 
   async verifyOtpLogin(cleanEmail: string, cleanCode: string) {
     assertDbConnected();
 
-    const user = await User.findOne({ email: cleanEmail });
+    const email = cleanEmail.trim().toLowerCase();
+    const user = await User.findOne({ email });
     if (!user) {
       throw { statusCode: 404, message: 'Account not found.' };
     }
 
-    if (!user.loginOtpCode || user.loginOtpCode !== cleanCode) {
-      throw { statusCode: 400, message: 'Invalid login code. Please check your email.' };
-    }
-
-    if (user.loginOtpExpires && new Date() > user.loginOtpExpires) {
-      throw { statusCode: 400, message: 'Login code has expired. Please request a new one.' };
-    }
+    // Verify OTP securely against hashed database record
+    await otpService.verifyOtp(email, cleanCode, 'login_otp');
 
     user.isEmailVerified = true;
-    user.loginOtpCode = undefined;
-    user.loginOtpExpires = undefined;
     await user.save();
 
     const token = generateToken(user._id.toString(), user.email, user.name);
@@ -356,6 +286,38 @@ export class AuthService {
       alertThresholdPercent: updated.alertThresholdPercent,
       createdAt: updated.createdAt,
     };
+  }
+
+  // Static proxy helpers allowing both AuthService.method() and authService.method()
+  static register(data: { name: string; email: string; password: string; preferredCurrency?: string }) {
+    return authService.register(data);
+  }
+  static login(email: string, password: string) {
+    return authService.login(email, password);
+  }
+  static sendVerification(targetEmail: string) {
+    return authService.sendVerification(targetEmail);
+  }
+  static verifyEmail(targetEmail: string, cleanCode: string) {
+    return authService.verifyEmail(targetEmail, cleanCode);
+  }
+  static forgotPassword(cleanEmail: string) {
+    return authService.forgotPassword(cleanEmail);
+  }
+  static resetPassword(cleanEmail: string, cleanCode: string, newPassword: string) {
+    return authService.resetPassword(cleanEmail, cleanCode, newPassword);
+  }
+  static sendOtpLogin(cleanEmail: string) {
+    return authService.sendOtpLogin(cleanEmail);
+  }
+  static verifyOtpLogin(cleanEmail: string, cleanCode: string) {
+    return authService.verifyOtpLogin(cleanEmail, cleanCode);
+  }
+  static getMe(userId: string) {
+    return authService.getMe(userId);
+  }
+  static updateProfile(userId: string, updates: any) {
+    return authService.updateProfile(userId, updates);
   }
 }
 

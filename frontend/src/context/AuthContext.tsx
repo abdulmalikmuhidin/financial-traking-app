@@ -9,31 +9,22 @@ interface DbStatusInfo {
   databaseName?: string;
 }
 
-interface VerificationNotice {
-  email: string;
-  code?: string;
-  type: 'verification' | 'reset' | 'otp';
-  timestamp: number;
-}
-
 interface AuthContextType {
   currentUser: User | null;
   token: string | null;
   isAuthenticated: boolean;
   dbStatus: DbStatusInfo;
-  latestNotice: VerificationNotice | null;
-  dismissNotice: () => void;
   checkDbStatus: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string, preferredCurrency: string) => Promise<{ success: boolean; previewCode?: string; error?: string }>;
+  register: (name: string, email: string, password: string, preferredCurrency: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   refreshUserProfile: () => Promise<void>;
-  sendVerificationCode: (email?: string) => Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }>;
+  sendVerificationCode: (email?: string) => Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }>;
   verifyEmail: (code: string, email?: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }>;
   submitPasswordReset: (email: string, code: string, newPassword: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  sendOtpLogin: (email: string) => Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }>;
+  sendOtpLogin: (email: string) => Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }>;
   verifyOtpLogin: (email: string, code: string) => Promise<{ success: boolean; message?: string; error?: string }>;
 }
 
@@ -60,10 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isConnected: false,
     dbError: null,
   });
-
-  const [latestNotice, setLatestNotice] = useState<VerificationNotice | null>(null);
-
-  const dismissNotice = () => setLatestNotice(null);
 
   const checkDbStatus = async () => {
     try {
@@ -122,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     preferredCurrency: string
-  ): Promise<{ success: boolean; previewCode?: string; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
 
@@ -137,16 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(data.user);
       setToken(data.token);
 
-      if (data.previewCode) {
-        setLatestNotice({
-          email: cleanEmail,
-          code: data.previewCode,
-          type: 'verification',
-          timestamp: Date.now(),
-        });
-      }
-
-      return { success: true, previewCode: data.previewCode };
+      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Registration failed.' };
     }
@@ -154,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendVerificationCode = async (
     targetEmail?: string
-  ): Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }> => {
+  ): Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }> => {
     const emailToUse = targetEmail || currentUser?.email;
     if (!emailToUse) {
       return { success: false, error: 'No email address provided.' };
@@ -162,20 +140,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const data = await authApiService.sendVerification(emailToUse);
-
-      if (data.previewCode) {
-        setLatestNotice({
-          email: emailToUse,
-          code: data.previewCode,
-          type: 'verification',
-          timestamp: Date.now(),
-        });
-      }
-
       return {
         success: true,
         message: data.message,
-        previewCode: data.previewCode,
+        cooldownSeconds: data.cooldownSeconds,
       };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to send verification code.' };
@@ -200,7 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(data.user);
       }
 
-      setLatestNotice(null);
       return { success: true, message: data.message };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to verify email.' };
@@ -209,24 +176,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestPasswordReset = async (
     email: string
-  ): Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }> => {
+  ): Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
       const data = await authApiService.forgotPassword(cleanEmail);
-
-      if (data.previewCode) {
-        setLatestNotice({
-          email: cleanEmail,
-          code: data.previewCode,
-          type: 'reset',
-          timestamp: Date.now(),
-        });
-      }
-
-      return { success: true, message: data.message, previewCode: data.previewCode };
+      return {
+        success: true,
+        message: data.message,
+        cooldownSeconds: data.cooldownSeconds,
+      };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to request reset.' };
+      return { success: false, error: err.message || 'Failed to request password reset.' };
     }
   };
 
@@ -244,12 +205,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newPassword,
       });
 
-      if (data.token && data.user) {
-        setCurrentUser(data.user);
-        setToken(data.token);
-      }
-
-      setLatestNotice(null);
       return { success: true, message: data.message };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to reset password.' };
@@ -258,22 +213,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendOtpLogin = async (
     email: string
-  ): Promise<{ success: boolean; message?: string; previewCode?: string; error?: string }> => {
+  ): Promise<{ success: boolean; message?: string; cooldownSeconds?: number; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
       const data = await authApiService.sendOtpLogin(cleanEmail);
-
-      if (data.previewCode) {
-        setLatestNotice({
-          email: cleanEmail,
-          code: data.previewCode,
-          type: 'otp',
-          timestamp: Date.now(),
-        });
-      }
-
-      return { success: true, message: data.message, previewCode: data.previewCode };
+      return {
+        success: true,
+        message: data.message,
+        cooldownSeconds: data.cooldownSeconds,
+      };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to send one-time code.' };
     }
@@ -290,7 +239,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setCurrentUser(data.user);
       setToken(data.token);
-      setLatestNotice(null);
       return { success: true, message: 'Logged in successfully.' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to verify login code.' };
@@ -300,7 +248,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setCurrentUser(null);
     setToken(null);
-    setLatestNotice(null);
   };
 
   const updateProfile = async (updates: Partial<User>) => {
@@ -324,8 +271,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isAuthenticated: !!currentUser,
         dbStatus,
-        latestNotice,
-        dismissNotice,
         checkDbStatus,
         login,
         register,

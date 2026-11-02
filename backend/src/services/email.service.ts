@@ -82,7 +82,7 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
       ? `<div class="code-box">
                   <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px;">${actionText || 'Security Verification Code'}</p>
                   <div class="code">${code}</div>
-                  <p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b;">This code expires in 15 minutes.</p>
+                  <p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b;">This code expires in 10 minutes.</p>
                 </div>`
       : ''
     }
@@ -101,7 +101,7 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
         from,
         to,
         subject,
-        text: `${title}\n\n${body}\n\n${code ? `Your code: ${code}\nThis code expires in 15 minutes.` : ''}`,
+        text: `${title}\n\n${body}\n\n${code ? `Your code: ${code}\nThis code expires in 10 minutes.` : ''}`,
         html: htmlContent,
       });
 

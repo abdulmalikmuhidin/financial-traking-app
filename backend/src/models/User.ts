@@ -1,26 +1,27 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-export interface IUser extends Document {
+export interface IUser {
+  _id?: mongoose.Types.ObjectId | string;
   name: string;
   email: string;
   password?: string;
   jobTitle?: string;
   preferredCurrency: string;
   isEmailVerified: boolean;
-  emailVerificationCode?: string;
-  emailVerificationExpires?: Date;
-  passwordResetCode?: string;
-  passwordResetExpires?: Date;
-  loginOtpCode?: string;
-  loginOtpExpires?: Date;
   monthlyIncomeTarget?: number;
   alertThresholdPercent?: number;
-  createdAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface IUserMethods {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-const UserSchema: Schema = new Schema(
+export type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
+
+const UserSchema: Schema<IUser, UserModel, IUserMethods> = new Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -28,12 +29,6 @@ const UserSchema: Schema = new Schema(
     jobTitle: { type: String, default: 'Personal Account' },
     preferredCurrency: { type: String, default: 'USD' },
     isEmailVerified: { type: Boolean, default: false },
-    emailVerificationCode: { type: String },
-    emailVerificationExpires: { type: Date },
-    passwordResetCode: { type: String },
-    passwordResetExpires: { type: Date },
-    loginOtpCode: { type: String },
-    loginOtpExpires: { type: Date },
     monthlyIncomeTarget: { type: Number, default: 5000 },
     alertThresholdPercent: { type: Number, default: 80 },
   },
@@ -57,5 +52,5 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User: mongoose.Model<IUser> = 
-  (mongoose.models.User as mongoose.Model<IUser>) || mongoose.model<IUser>('User', UserSchema);
+export const User = 
+  (mongoose.models.User as UserModel) || mongoose.model<IUser, UserModel>('User', UserSchema);

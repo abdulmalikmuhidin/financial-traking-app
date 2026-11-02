@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -14,7 +14,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   onClose,
   emailToVerify,
 }) => {
-  const { currentUser, sendVerificationCode, verifyEmail, latestNotice } = useAuth();
+  const { currentUser, sendVerificationCode, verifyEmail } = useAuth();
   const { t } = useLanguage();
 
   const activeEmail = emailToVerify || currentUser?.email || '';
@@ -33,10 +33,6 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     }
     return () => clearTimeout(timer);
   }, [cooldown]);
-
-  const noticeCode = latestNotice && latestNotice.email.toLowerCase() === activeEmail.toLowerCase()
-    ? latestNotice.code
-    : undefined;
 
   if (!isOpen) return null;
 
@@ -75,8 +71,8 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setResending(false);
 
     if (res.success) {
-      setSuccess(t('auth.codeDispatched', 'A fresh 6-digit code was sent to your email.'));
-      setCooldown(45);
+      setSuccess(res.message || t('auth.codeDispatched', 'A fresh 6-digit code was sent to your email.'));
+      setCooldown(res.cooldownSeconds || 60);
     } else {
       setError(res.error || t('auth.resendFailed', 'Failed to dispatch code.'));
     }
@@ -119,25 +115,6 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               'We sent a 6-digit security code to your email. Enter it below to verify your email address and unlock account recovery.'
             )}
           </p>
-
-          {/* Sandbox Quick-Fill Notice */}
-          {noticeCode && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-xs text-emerald-800 font-medium">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  {t('auth.sandboxCodeDetected', 'Development code')}: <strong className="font-mono text-sm tracking-widest">{noticeCode}</strong>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCode(noticeCode)}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline ml-2 shrink-0"
-              >
-                {t('auth.autofill', 'Fill Code')}
-              </button>
-            </div>
-          )}
 
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-semibold">

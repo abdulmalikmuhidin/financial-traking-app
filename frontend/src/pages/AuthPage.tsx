@@ -75,6 +75,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [otpStep, setOtpStep] = useState<'request' | 'verify'>('request');
   const [otpCode, setOtpCode] = useState('');
 
+  // Resend cooldown states
+  const [forgotCooldown, setForgotCooldown] = useState(0);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (forgotCooldown > 0) {
+      timer = setTimeout(() => setForgotCooldown((c) => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [forgotCooldown]);
+
+  useEffect(() => {
+    let timer: any;
+    if (otpCooldown > 0) {
+      timer = setTimeout(() => setOtpCooldown((c) => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCooldown]);
+
   // Messages & loading
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -156,9 +176,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     if (res.success) {
       setSuccess(t('auth.codeSentSuccess', 'Security code dispatched to your email!'));
       setForgotStep('reset');
-      if (res.previewCode) {
-        setResetCode(res.previewCode);
-      }
+      setForgotCooldown(res.cooldownSeconds || 60);
     } else {
       setError(res.error || 'Failed to dispatch reset code.');
     }
@@ -210,9 +228,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     if (res.success) {
       setSuccess(t('auth.codeSentSuccess', 'Security code dispatched to your email!'));
       setOtpStep('verify');
-      if (res.previewCode) {
-        setOtpCode(res.previewCode);
-      }
+      setOtpCooldown(res.cooldownSeconds || 60);
     } else {
       setError(res.error || 'Failed to send one-time login code.');
     }

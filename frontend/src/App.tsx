@@ -23,7 +23,6 @@ import {
 import { EmailVerificationModal } from "./components/features/auth";
 import { ConfirmationModal } from "./components/common/ConfirmationModal";
 import { ToastContainer } from "./components/common/ToastContainer";
-import { SecurityNoticeBanner } from "./components/common/SecurityNoticeBanner";
 
 const MainApp: React.FC = () => {
   const { currentUser, isAuthenticated, sendVerificationCode } = useAuth();
@@ -173,7 +172,6 @@ const MainApp: React.FC = () => {
 
       <ConfirmationModal />
       <ToastContainer />
-      <SecurityNoticeBanner />
     </div>
   );
 };

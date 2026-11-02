@@ -4,7 +4,6 @@ import { User } from '../types';
 export interface AuthResponse {
   token: string;
   user: User;
-  previewCode?: string;
   message?: string;
 }
 
@@ -13,6 +12,12 @@ export interface DbStatusResponse {
   dbError: string | null;
   readyState: number;
   databaseName: string;
+}
+
+export interface GenericActionResponse {
+  success: boolean;
+  message: string;
+  cooldownSeconds?: number;
 }
 
 export const authApiService = {
@@ -43,8 +48,15 @@ export const authApiService = {
     });
   },
 
-  sendVerification(email?: string): Promise<{ success: boolean; message: string; previewCode?: string }> {
-    return request('/api/auth/send-verification', {
+  sendVerification(email?: string): Promise<GenericActionResponse> {
+    return request<GenericActionResponse>('/api/auth/send-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resendVerification(email?: string): Promise<GenericActionResponse> {
+    return request<GenericActionResponse>('/api/auth/resend-verification', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
@@ -57,8 +69,8 @@ export const authApiService = {
     });
   },
 
-  forgotPassword(email: string): Promise<{ success: boolean; message: string; previewCode?: string }> {
-    return request('/api/auth/forgot-password', {
+  forgotPassword(email: string): Promise<GenericActionResponse> {
+    return request<GenericActionResponse>('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
@@ -68,15 +80,15 @@ export const authApiService = {
     email: string;
     code: string;
     newPassword: string;
-  }): Promise<{ success: boolean; message: string; token: string; user: User }> {
+  }): Promise<{ success: boolean; message: string }> {
     return request('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  sendOtpLogin(email: string): Promise<{ success: boolean; message: string; previewCode?: string }> {
-    return request('/api/auth/send-otp-login', {
+  sendOtpLogin(email: string): Promise<GenericActionResponse> {
+    return request<GenericActionResponse>('/api/auth/send-otp-login', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
