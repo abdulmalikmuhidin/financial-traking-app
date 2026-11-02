@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';//this is a Node.js module for sending emails using SMTP(S). It provides a simple API to send emails and supports various transport methods, including SMTP, sendmail, and more.
+import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
 interface SendEmailOptions {
@@ -19,11 +19,12 @@ export interface EmailSendResult {
  * Creates nodemailer transporter if SMTP credentials or service are configured in environment.
  */
 function getTransporter() {
-  const service = env.SMTP_SERVICE;
-  const host = env.SMTP_HOST;
+  const service = env.SMTP_SERVICE ? env.SMTP_SERVICE.trim().toLowerCase() : '';
+  const host = env.SMTP_HOST ? env.SMTP_HOST.trim() : '';
   const port = env.SMTP_PORT;
-  const user = env.SMTP_USER;
-  const pass = env.SMTP_PASS;
+  const user = env.SMTP_USER ? env.SMTP_USER.trim() : '';
+  // Clean password: trim and remove spaces (Google App Passwords are 16 letters, often copied with spaces)
+  const pass = env.SMTP_PASS ? env.SMTP_PASS.trim().replace(/\s+/g, '') : '';
 
   if (service && user && pass) {
     return nodemailer.createTransport({
@@ -51,7 +52,7 @@ function getTransporter() {
 export async function sendAuthenticationEmail(options: SendEmailOptions): Promise<EmailSendResult> {
   const { to, subject, title, body, code, actionText } = options;
   const transporter = getTransporter();
-  const from = env.EMAIL_FROM;
+  const from = env.EMAIL_FROM || '"FinTrack Security" <noreply@fintrack.app>';
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -77,15 +78,14 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
             <h2>${title}</h2>
           </div>
           <p>${body}</p>
-          ${
-            code
-              ? `<div class="code-box">
+          ${code
+      ? `<div class="code-box">
                   <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px;">${actionText || 'Security Verification Code'}</p>
                   <div class="code">${code}</div>
                   <p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b;">This code expires in 15 minutes.</p>
                 </div>`
-              : ''
-          }
+      : ''
+    }
           <div class="notice">
             If you did not request this email, you can safely ignore it. Your account remains protected.<br>
             FinTrack &bull; Addis Ababa &bull; Worldwide
@@ -111,25 +111,20 @@ export async function sendAuthenticationEmail(options: SendEmailOptions): Promis
         message: 'Security code successfully dispatched to your email address.',
       };
     } catch (err: any) {
-      console.error(`[EMAIL DISPATCH ERROR] Failed to send email to ${to} via SMTP:`, err.message || err);
+      console.error(`[EMAIL DISPATCH ERROR] Failed to send email to ${to}:`, err.message || err);
+      throw {
+        statusCode: 500,
+        message: `Email delivery failed: ${err.message || 'SMTP Authentication error. Please verify your credentials.'}`,
+      };
     }
   }
 
-  // If SMTP is not yet configured or failed in development, print strictly to server console
+  // If no SMTP credentials are provided at all
   console.warn(
-    `[EMAIL NOTICE] Real email could not be sent to ${to}. Please configure SMTP settings (e.g. SMTP_USER, SMTP_PASS, SMTP_SERVICE or SMTP_HOST) in backend/.env.`
+    `[EMAIL NOTICE] No SMTP configuration found. Real emails cannot be delivered until SMTP credentials are provided in backend/.env.`
   );
-  if (code) {
-    console.log('---------------------------------------------------------');
-    console.log(`[SERVER-SIDE LOG ONLY - NOT SENT TO CLIENT]`);
-    console.log(`TO: ${to}`);
-    console.log(`SUBJECT: ${subject}`);
-    console.log(`CODE: ${code}`);
-    console.log('---------------------------------------------------------');
-  }
-
-  return {
-    sent: false,
-    message: 'Verification code dispatched. Please check your email inbox.',
+  throw {
+    statusCode: 500,
+    message: 'Email service is not configured. Please configure SMTP_USER and SMTP_PASS in backend/.env to deliver emails.',
   };
 }
