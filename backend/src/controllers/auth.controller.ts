@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthService } from '../services/auth.service';
+import { authService } from '../services/auth.service';
 import { AuthValidator } from '../validators/auth.validator';
 import { AuthRequest } from '../types';
 import { getDbStatus } from '../config/database';
