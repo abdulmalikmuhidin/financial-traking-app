@@ -30,6 +30,9 @@ function getTransporter() {
     return nodemailer.createTransport({
       service,
       auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
@@ -39,6 +42,9 @@ function getTransporter() {
       port,
       secure: env.SMTP_SECURE !== undefined ? env.SMTP_SECURE : port === 465,
       auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
