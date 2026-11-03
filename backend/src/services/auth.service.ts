@@ -4,19 +4,19 @@ import { userRepository, UserRepository } from '../repositories/user.repository'
 import { assertDbConnected } from '../config/database';
 import { otpService } from './otp.service';
 import { env } from '../config/env';
-import { 
-  ConflictError, 
-  UnauthorizedError, 
-  NotFoundError, 
-  BadRequestError 
+import {
+  ConflictError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError
 } from '../common/errors/AppError';
 
 export const generateToken = (id: string, email: string, name: string) => {
-  return jwt.sign({ id, email, name }, env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id, email, name }, env.JWT_SECRET, { expiresIn: '15m' });
 };
 
 export class AuthService {
-  constructor(private readonly userRepo: UserRepository = userRepository) {}
+  constructor(private readonly userRepo: UserRepository = userRepository) { }
 
   async register(data: { name: string; email: string; password: string; preferredCurrency?: string }) {
     assertDbConnected();
