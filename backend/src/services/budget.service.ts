@@ -1,4 +1,4 @@
-import { BudgetModel } from '../models/Budget';
+import { budgetRepository, BudgetRepository } from '../repositories/budget.repository';
 import { assertDbConnected } from '../config/database';
 
 export interface SaveBudgetDto {
@@ -9,10 +9,12 @@ export interface SaveBudgetDto {
 }
 
 export class BudgetService {
+  constructor(private readonly repo: BudgetRepository = budgetRepository) {}
+
   async getAll(userId: string) {
     assertDbConnected();
 
-    const docs = await BudgetModel.find({ userId });
+    const docs = await this.repo.findByUserId(userId);
     return docs.map((d) => ({
       id: d._id.toString(),
       userId: d.userId,
@@ -30,10 +32,12 @@ export class BudgetService {
     const monthKey = month || '2026-10';
     const parsedLimit = typeof monthlyLimit === 'string' ? parseFloat(monthlyLimit) : monthlyLimit;
 
-    const updated = await BudgetModel.findOneAndUpdate(
-      { userId, categoryId, month: monthKey },
-      { monthlyLimit: parsedLimit, currency: currency || 'USD' },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+    const updated = await this.repo.upsert(
+      userId,
+      categoryId,
+      monthKey,
+      parsedLimit,
+      currency || 'USD'
     );
 
     return {
@@ -49,7 +53,7 @@ export class BudgetService {
   async delete(userId: string, id: string) {
     assertDbConnected();
 
-    await BudgetModel.findOneAndDelete({ _id: id, userId });
+    await this.repo.deleteByIdAndUser(id, userId);
     return { success: true };
   }
 }

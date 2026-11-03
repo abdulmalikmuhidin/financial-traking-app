@@ -1,15 +1,10 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
-import { useFinance } from '../../context/FinanceContext';
+import { useConfirmation } from '../../context/ConfirmationContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const ConfirmationModal: React.FC = () => {
-  const { confirmation, closeConfirmation } = useFinance();
+  const { confirmation, closeConfirmation } = useConfirmation();
   const { t } = useLanguage();
 
   if (!confirmation) return null;

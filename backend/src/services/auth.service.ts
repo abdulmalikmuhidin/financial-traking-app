@@ -1,14 +1,23 @@
 import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/User';
+import { userRepository, UserRepository } from '../repositories/user.repository';
 import { assertDbConnected } from '../config/database';
 import { otpService } from './otp.service';
 import { env } from '../config/env';
+import { 
+  ConflictError, 
+  UnauthorizedError, 
+  NotFoundError, 
+  BadRequestError 
+} from '../common/errors/AppError';
 
 export const generateToken = (id: string, email: string, name: string) => {
   return jwt.sign({ id, email, name }, env.JWT_SECRET, { expiresIn: '30d' });
 };
 
 export class AuthService {
+  constructor(private readonly userRepo: UserRepository = userRepository) {}
+
   async register(data: { name: string; email: string; password: string; preferredCurrency?: string }) {
     assertDbConnected();
 
@@ -17,12 +26,12 @@ export class AuthService {
     const cleanName = name.trim();
     const currency = preferredCurrency || 'USD';
 
-    const existingUser = await User.findOne({ email: cleanEmail });
+    const existingUser = await this.userRepo.findByEmail(cleanEmail);
     if (existingUser) {
-      throw { statusCode: 400, message: 'An account with this email already exists.' };
+      throw new ConflictError('An account with this email already exists.');
     }
 
-    const newUser = new User({
+    const newUser = await this.userRepo.create({
       name: cleanName,
       email: cleanEmail,
       password,
@@ -32,8 +41,6 @@ export class AuthService {
       alertThresholdPercent: 80,
       isEmailVerified: false,
     });
-
-    await newUser.save();
 
     // Securely generate, hash, and email the OTP verification code
     await otpService.createAndSendOtp(cleanEmail, 'email_verification', cleanName);
@@ -60,14 +67,14 @@ export class AuthService {
     assertDbConnected();
 
     const cleanEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
+    const user = await this.userRepo.findByEmail(cleanEmail);
     if (!user) {
-      throw { statusCode: 401, message: 'Invalid email or password.' };
+      throw new UnauthorizedError('Invalid email or password.');
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      throw { statusCode: 401, message: 'Invalid email or password.' };
+      throw new UnauthorizedError('Invalid email or password.');
     }
 
     const token = generateToken(user._id.toString(), user.email, user.name);
@@ -92,9 +99,9 @@ export class AuthService {
     assertDbConnected();
 
     const cleanEmail = targetEmail.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
+    const user = await this.userRepo.findByEmail(cleanEmail);
     if (!user) {
-      throw { statusCode: 404, message: 'No user account found for this email.' };
+      throw new NotFoundError('No user account found for this email.');
     }
 
     const result = await otpService.createAndSendOtp(cleanEmail, 'email_verification', user.name);
@@ -110,9 +117,9 @@ export class AuthService {
     assertDbConnected();
 
     const cleanEmail = targetEmail.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
+    const user = await this.userRepo.findByEmail(cleanEmail);
     if (!user) {
-      throw { statusCode: 404, message: 'No account found with this email address.' };
+      throw new NotFoundError('No account found with this email address.');
     }
 
     // Verify OTP securely against hashed database record
@@ -142,9 +149,9 @@ export class AuthService {
     assertDbConnected();
 
     const email = cleanEmail.trim().toLowerCase();
-    const user = await User.findOne({ email });
+    const user = await this.userRepo.findByEmail(email);
     if (!user) {
-      throw { statusCode: 404, message: 'No account registered with this email address.' };
+      throw new NotFoundError('No account registered with this email address.');
     }
 
     const result = await otpService.createAndSendOtp(email, 'password_reset', user.name);
@@ -160,9 +167,9 @@ export class AuthService {
     assertDbConnected();
 
     const email = cleanEmail.trim().toLowerCase();
-    const user = await User.findOne({ email });
+    const user = await this.userRepo.findByEmail(email);
     if (!user) {
-      throw { statusCode: 404, message: 'No account found with this email.' };
+      throw new NotFoundError('No account found with this email.');
     }
 
     // Verify OTP securely against hashed database record
@@ -181,9 +188,9 @@ export class AuthService {
     assertDbConnected();
 
     const email = cleanEmail.trim().toLowerCase();
-    const user = await User.findOne({ email });
+    const user = await this.userRepo.findByEmail(email);
     if (!user) {
-      throw { statusCode: 404, message: 'No account found for this email. Please register first.' };
+      throw new NotFoundError('No account found for this email. Please register first.');
     }
 
     const result = await otpService.createAndSendOtp(email, 'login_otp', user.name);
@@ -199,9 +206,9 @@ export class AuthService {
     assertDbConnected();
 
     const email = cleanEmail.trim().toLowerCase();
-    const user = await User.findOne({ email });
+    const user = await this.userRepo.findByEmail(email);
     if (!user) {
-      throw { statusCode: 404, message: 'Account not found.' };
+      throw new NotFoundError('Account not found.');
     }
 
     // Verify OTP securely against hashed database record
@@ -231,9 +238,9 @@ export class AuthService {
   async getMe(userId: string) {
     assertDbConnected();
 
-    const user = await User.findById(userId).select('-password');
+    const user = await this.userRepo.findByIdWithoutPassword(userId);
     if (!user) {
-      throw { statusCode: 404, message: 'User profile not found.' };
+      throw new NotFoundError('User profile not found.');
     }
 
     return {
@@ -270,9 +277,9 @@ export class AuthService {
     if (monthlyIncomeTarget !== undefined) toUpdate.monthlyIncomeTarget = monthlyIncomeTarget;
     if (alertThresholdPercent !== undefined) toUpdate.alertThresholdPercent = alertThresholdPercent;
 
-    const updated = await User.findByIdAndUpdate(userId, toUpdate, { new: true }).select('-password');
+    const updated = await this.userRepo.updateById(userId, toUpdate);
     if (!updated) {
-      throw { statusCode: 404, message: 'User profile not found.' };
+      throw new NotFoundError('User profile not found.');
     }
 
     return {

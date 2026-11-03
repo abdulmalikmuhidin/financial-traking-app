@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   Transaction, 
   Budget, 
@@ -8,19 +8,17 @@ import {
 } from '../types';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
+import { useToast } from './ToastContext';
+import { useConfirmation, ConfirmationConfig } from './ConfirmationContext';
 import { DEFAULT_CATEGORIES } from '../constants/categories';
 import { convertCurrency, formatCurrency } from '../utils/currencies';
 import { financeApiService } from '../services/finance.service';
 import { STORAGE_KEYS } from '../constants';
-
-interface ConfirmationConfig {
-  title: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  isDestructive?: boolean;
-  onConfirm: () => void;
-}
+import { 
+  exportTransactionsToCSV as exportCSV, 
+  exportBackupJSON as exportBackup, 
+  parseBackupJSON 
+} from '../utils/export';
 
 interface FinanceContextType {
   // Data
@@ -53,7 +51,7 @@ interface FinanceContextType {
   exportBackupJSON: () => void;
   importBackupJSON: (jsonString: string) => boolean;
 
-  // UI State: Toasts & Confirmations
+  // Composed UI State (Toasts & Confirmations)
   toasts: Toast[];
   showToast: (message: string, type?: ToastType, duration?: number) => void;
   dismissToast: (id: string) => void;
@@ -67,6 +65,9 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, token } = useAuth();
   const { language } = useLanguage();
+  const { toasts, showToast, dismissToast } = useToast();
+  const { confirmation, requestConfirmation, closeConfirmation } = useConfirmation();
+
   const userId = currentUser ? currentUser.id : 'guest';
 
   // Storage keys scoped to the user
@@ -128,10 +129,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return [];
   });
 
-  // UI state
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [confirmation, setConfirmation] = useState<ConfirmationConfig | null>(null);
-
   // Sync to localStorage
   useEffect(() => {
     if (!currentUser) return;
@@ -180,32 +177,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loadBackendData();
   }, [currentUser?.id, token]);
 
-  // Toast Helpers
-  const showToast = (message: string, type: ToastType = 'info', duration: number = 3800) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const newToast: Toast = { id, message, type, duration };
-    setToasts((prev) => [...prev, newToast]);
-
-    if (duration > 0) {
-      setTimeout(() => {
-        dismissToast(id);
-      }, duration);
-    }
-  };
-
-  const dismissToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Confirmation modal helpers
-  const requestConfirmation = (config: ConfirmationConfig) => {
-    setConfirmation(config);
-  };
-
-  const closeConfirmation = () => {
-    setConfirmation(null);
-  };
-
   // Currency Helpers
   const setCurrency = (code: string) => {
     setCurrencyState(code);
@@ -218,9 +189,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const convertAmount = (amount: number, fromCode: string = 'USD'): number => {
+  const convertAmount = useCallback((amount: number, fromCode = 'USD'): number => {
     return convertCurrency(amount, fromCode, currency);
-  };
+  }, [currency]);
 
   // Transaction CRUD
   const addTransaction = async (txData: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => {
@@ -238,7 +209,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       'success'
     );
 
-    // Sync to backend if token present
     if (token) {
       try {
         const saved = await financeApiService.createTransaction(txData);
@@ -283,7 +253,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setCategoryBudget = async (
     categoryId: string, 
     monthlyLimit: number, 
-    month: string = '2026-10'
+    month = '2026-10'
   ) => {
     setBudgets((prev) => {
       const existingIdx = prev.findIndex(
@@ -386,69 +356,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('All transaction and budget data cleared', 'warning');
   };
 
-  // CSV Export
+  // CSV & JSON Exports via specialized utilities
   const exportTransactionsToCSV = () => {
-    if (transactions.length === 0) {
-      showToast('No transactions to export', 'warning');
-      return;
+    try {
+      exportCSV(transactions, categories);
+      showToast('Transactions exported to CSV', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Export failed', 'warning');
     }
-
-    const headers = ['Date', 'Type', 'Description', 'Merchant', 'Category', 'Amount', 'Currency', 'Payment Method', 'Notes'];
-    const rows = transactions.map((t) => {
-      const cat = categories.find((c) => c.id === t.categoryId)?.name || 'Uncategorized';
-      return [
-        `"${t.date}"`,
-        `"${t.type}"`,
-        `"${(t.description || '').replace(/"/g, '""')}"`,
-        `"${(t.merchant || '').replace(/"/g, '""')}"`,
-        `"${cat}"`,
-        t.amount.toFixed(2),
-        `"${t.currency}"`,
-        `"${t.paymentMethod}"`,
-        `"${(t.notes || '').replace(/"/g, '""')}"`,
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `fintrack_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('Transactions exported to CSV', 'success');
   };
 
   const exportBackupJSON = () => {
-    const backup = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      user: currentUser,
-      currency,
-      categories,
-      budgets,
-      transactions,
-    };
-
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backup, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute('href', dataStr);
-    dlAnchor.setAttribute('download', `fintrack_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    document.body.removeChild(dlAnchor);
-    showToast('Full backup exported', 'success');
+    try {
+      exportBackup({
+        user: currentUser,
+        currency,
+        categories,
+        budgets,
+        transactions,
+      });
+      showToast('Full backup exported', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Export failed', 'error');
+    }
   };
 
   const importBackupJSON = (jsonString: string): boolean => {
     try {
-      const parsed = JSON.parse(jsonString);
-      if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
-        showToast('Invalid backup file structure', 'error');
-        return false;
-      }
-
+      const parsed = parseBackupJSON(jsonString);
       if (parsed.categories && Array.isArray(parsed.categories)) {
         setCategories(parsed.categories);
       }
@@ -462,8 +397,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       showToast('Backup restored successfully!', 'success');
       return true;
-    } catch {
-      showToast('Failed to parse backup JSON file', 'error');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to parse backup JSON file', 'error');
       return false;
     }
   };

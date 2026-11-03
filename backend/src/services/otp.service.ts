@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { OtpModel, OtpPurpose } from '../models/Otp';
 import { sendAuthenticationEmail } from './email.service';
 import { env } from '../config/env';
+import { BadRequestError, TooManyRequestsError } from '../common/errors/AppError';
 
 export const OTP_EXPIRY_MINUTES = 10;
 export const OTP_EXPIRY_MS = OTP_EXPIRY_MINUTES * 60 * 1000;
@@ -65,10 +66,7 @@ export class OtpService {
       const elapsed = now.getTime() - latestActive.lastSentAt.getTime();
       if (elapsed < RESEND_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
-        throw {
-          statusCode: 429,
-          message: `Please wait ${remainingSeconds} seconds before requesting a new code.`,
-        };
+        throw new TooManyRequestsError(`Please wait ${remainingSeconds} seconds before requesting a new code.`);
       }
     }
 
@@ -130,7 +128,7 @@ export class OtpService {
     const cleanCode = plainCode ? plainCode.toString().trim() : '';
 
     if (!cleanCode || cleanCode.length !== 6) {
-      throw { statusCode: 400, message: 'Please enter a valid 6-digit verification code.' };
+      throw new BadRequestError('Please enter a valid 6-digit verification code.');
     }
 
     // Find the latest active OTP for this email and purpose
@@ -141,30 +139,21 @@ export class OtpService {
     }).sort({ createdAt: -1 });
 
     if (!otpDoc) {
-      throw {
-        statusCode: 400,
-        message: 'No active verification code found. Please request a new one.',
-      };
+      throw new BadRequestError('No active verification code found. Please request a new one.');
     }
 
     // Check expiration
     if (new Date() > otpDoc.expiresAt) {
       otpDoc.isUsed = true;
       await otpDoc.save();
-      throw {
-        statusCode: 400,
-        message: 'Verification code has expired. Please request a fresh code.',
-      };
+      throw new BadRequestError('Verification code has expired. Please request a fresh code.');
     }
 
     // Check attempt limits
     if (otpDoc.attempts >= otpDoc.maxAttempts) {
       otpDoc.isUsed = true;
       await otpDoc.save();
-      throw {
-        statusCode: 400,
-        message: 'Maximum verification attempts exceeded. Please request a new code.',
-      };
+      throw new BadRequestError('Maximum verification attempts exceeded. Please request a new code.');
     }
 
     // Constant-time hash comparison
@@ -179,16 +168,10 @@ export class OtpService {
 
       const remaining = otpDoc.maxAttempts - otpDoc.attempts;
       if (remaining <= 0) {
-        throw {
-          statusCode: 400,
-          message: 'Maximum verification attempts exceeded. Please request a new code.',
-        };
+        throw new BadRequestError('Maximum verification attempts exceeded. Please request a new code.');
       }
 
-      throw {
-        statusCode: 400,
-        message: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
-      };
+      throw new BadRequestError(`Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
     }
 
     // Mark as single-use

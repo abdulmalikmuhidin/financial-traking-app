@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FinanceProvider } from "./context/FinanceContext";
+import { ToastProvider } from "./context/ToastContext";
+import { ConfirmationProvider } from "./context/ConfirmationContext";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import { NavigationTab, Transaction } from "./types";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -180,9 +182,13 @@ export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <FinanceProvider>
-          <MainApp />
-        </FinanceProvider>
+        <ToastProvider>
+          <ConfirmationProvider>
+            <FinanceProvider>
+              <MainApp />
+            </FinanceProvider>
+          </ConfirmationProvider>
+        </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
   );

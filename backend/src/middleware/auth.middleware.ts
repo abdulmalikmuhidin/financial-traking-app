@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../types';
 import { env } from '../config/env';
+import { UnauthorizedError, ForbiddenError } from '../common/errors/AppError';
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -10,7 +11,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required. Please sign in.' });
+    return next(new UnauthorizedError('Access token required. Please sign in.'));
   }
 
   try {
@@ -18,6 +19,6 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Invalid or expired session token. Please sign in again.' });
+    return next(new ForbiddenError('Invalid or expired session token. Please sign in again.'));
   }
 };

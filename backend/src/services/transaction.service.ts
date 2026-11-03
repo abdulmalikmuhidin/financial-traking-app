@@ -1,5 +1,6 @@
-import { TransactionModel } from '../models/Transaction';
+import { transactionRepository, TransactionRepository } from '../repositories/transaction.repository';
 import { assertDbConnected } from '../config/database';
+import { NotFoundError } from '../common/errors/AppError';
 
 export interface CreateTransactionDto {
   type: 'income' | 'expense';
@@ -15,10 +16,12 @@ export interface CreateTransactionDto {
 }
 
 export class TransactionService {
+  constructor(private readonly repo: TransactionRepository = transactionRepository) {}
+
   async getAll(userId: string) {
     assertDbConnected();
 
-    const docs = await TransactionModel.find({ userId }).sort({ date: -1 });
+    const docs = await this.repo.findByUserId(userId);
     return docs.map((d) => ({
       id: d._id.toString(),
       userId: d.userId,
@@ -52,7 +55,7 @@ export class TransactionService {
       isRecurring,
     } = data;
 
-    const newTx = new TransactionModel({
+    const newTx = await this.repo.create({
       userId,
       type,
       amount: typeof amount === 'string' ? parseFloat(amount) : amount,
@@ -65,8 +68,6 @@ export class TransactionService {
       notes: notes ? notes.trim() : undefined,
       isRecurring: !!isRecurring,
     });
-
-    await newTx.save();
 
     return {
       id: newTx._id.toString(),
@@ -88,14 +89,10 @@ export class TransactionService {
   async update(userId: string, id: string, updates: any) {
     assertDbConnected();
 
-    const updated = await TransactionModel.findOneAndUpdate(
-      { _id: id, userId },
-      { ...updates },
-      { new: true }
-    );
+    const updated = await this.repo.updateByIdAndUser(id, userId, updates);
 
     if (!updated) {
-      throw { statusCode: 404, message: 'Transaction not found or unauthorized.' };
+      throw new NotFoundError('Transaction not found or unauthorized.');
     }
 
     return {
@@ -118,9 +115,9 @@ export class TransactionService {
   async delete(userId: string, id: string) {
     assertDbConnected();
 
-    const deleted = await TransactionModel.findOneAndDelete({ _id: id, userId });
+    const deleted = await this.repo.deleteByIdAndUser(id, userId);
     if (!deleted) {
-      throw { statusCode: 404, message: 'Transaction not found or unauthorized.' };
+      throw new NotFoundError('Transaction not found or unauthorized.');
     }
     return { success: true, message: 'Transaction deleted.' };
   }

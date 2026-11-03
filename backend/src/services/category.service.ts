@@ -1,6 +1,7 @@
-import { CategoryModel } from '../models/Category';
-import { TransactionModel } from '../models/Transaction';
+import { categoryRepository, CategoryRepository } from '../repositories/category.repository';
+import { transactionRepository, TransactionRepository } from '../repositories/transaction.repository';
 import { assertDbConnected } from '../config/database';
+import { BadRequestError } from '../common/errors/AppError';
 
 export interface CreateCategoryDto {
   name: string;
@@ -10,14 +11,15 @@ export interface CreateCategoryDto {
 }
 
 export class CategoryService {
+  constructor(
+    private readonly repo: CategoryRepository = categoryRepository,
+    private readonly txRepo: TransactionRepository = transactionRepository
+  ) {}
+
   async getAll(userId?: string) {
     assertDbConnected();
 
-    const query = userId 
-      ? { $or: [{ isDefault: true }, { userId }] }
-      : { isDefault: true };
-
-    const docs = await CategoryModel.find(query);
+    const docs = await this.repo.findAll(userId);
     return docs.map((d) => ({
       id: d.id,
       name: d.name,
@@ -35,7 +37,7 @@ export class CategoryService {
     const { name, type, icon, color } = data;
     const newId = `cat-${Date.now()}`;
 
-    const doc = new CategoryModel({
+    const doc = await this.repo.create({
       id: newId,
       name: name.trim(),
       type,
@@ -45,7 +47,6 @@ export class CategoryService {
       userId,
     });
 
-    await doc.save();
     return {
       id: doc.id,
       name: doc.name,
@@ -60,14 +61,14 @@ export class CategoryService {
   async delete(userId: string, id: string) {
     assertDbConnected();
 
-    const txCount = await TransactionModel.countDocuments({ categoryId: id, userId });
+    const txCount = await this.txRepo.countByCategoryAndUser(id, userId);
     if (txCount > 0) {
-      throw { statusCode: 400, message: `Cannot delete: ${txCount} transactions use this category.` };
+      throw new BadRequestError(`Cannot delete: ${txCount} transactions use this category.`);
     }
 
-    const deleted = await CategoryModel.findOneAndDelete({ id, userId, isDefault: false });
+    const deleted = await this.repo.deleteCustom(id, userId);
     if (!deleted) {
-      throw { statusCode: 400, message: 'Cannot delete default category or category not found.' };
+      throw new BadRequestError('Cannot delete default category or category not found.');
     }
 
     return { success: true };

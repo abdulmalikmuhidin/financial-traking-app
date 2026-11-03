@@ -1,14 +1,9 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { AlertCircle, CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
-import { useFinance } from '../../context/FinanceContext';
+import { useToast } from '../../context/ToastContext';
 
 export const ToastContainer: React.FC = () => {
-  const { toasts, dismissToast } = useFinance();
+  const { toasts, dismissToast } = useToast();
 
   if (toasts.length === 0) return null;
 
