@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext';
+import React, { useState, useEffect } from "react";
+import {
+  Mail,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  X,
+  ShieldCheck,
+  ArrowRight,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface EmailVerificationModalProps {
   isOpen: boolean;
@@ -17,9 +25,9 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   const { currentUser, sendVerificationCode, verifyEmail } = useAuth();
   const { t } = useLanguage();
 
-  const activeEmail = emailToVerify || currentUser?.email || '';
+  const activeEmail = emailToVerify || currentUser?.email || "";
 
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +35,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout>;
     if (cooldown > 0) {
       timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
     }
@@ -39,7 +47,12 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code || code.length < 6) {
-      setError(t('auth.sixDigitRequired', 'Please enter the 6-digit verification code.'));
+      setError(
+        t(
+          "auth.sixDigitRequired",
+          "Please enter the 6-digit verification code.",
+        ),
+      );
       return;
     }
 
@@ -51,12 +64,18 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setLoading(false);
 
     if (res.success) {
-      setSuccess(res.message || t('auth.emailVerifiedSuccess', 'Email verified successfully!'));
+      setSuccess(
+        res.message ||
+          t("auth.emailVerifiedSuccess", "Email verified successfully!"),
+      );
       setTimeout(() => {
         onClose();
       }, 1500);
     } else {
-      setError(res.error || t('auth.verifyFailed', 'Invalid or expired verification code.'));
+      setError(
+        res.error ||
+          t("auth.verifyFailed", "Invalid or expired verification code."),
+      );
     }
   };
 
@@ -71,16 +90,22 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setResending(false);
 
     if (res.success) {
-      setSuccess(res.message || t('auth.codeDispatched', 'A fresh 6-digit code was sent to your email.'));
+      setSuccess(
+        res.message ||
+          t(
+            "auth.codeDispatched",
+            "A fresh 6-digit code was sent to your email.",
+          ),
+      );
       setCooldown(res.cooldownSeconds || 60);
     } else {
-      setError(res.error || t('auth.resendFailed', 'Failed to dispatch code.'));
+      setError(res.error || t("auth.resendFailed", "Failed to dispatch code."));
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div 
+      <div
         className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all"
         onClick={(e) => e.stopPropagation()}
       >
@@ -92,7 +117,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                {t('auth.verifyEmailTitle', 'Verify Email Address')}
+                {t("auth.verifyEmailTitle", "Verify Email Address")}
               </h2>
               <p className="text-xs text-slate-500 font-medium truncate max-w-[220px]">
                 {activeEmail}
@@ -111,8 +136,8 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
         <form onSubmit={handleVerify} className="p-6 space-y-4">
           <p className="text-sm text-slate-600 leading-relaxed">
             {t(
-              'auth.verifyPrompt',
-              'We sent a 6-digit security code to your email. Enter it below to verify your email address and unlock account recovery.'
+              "auth.verifyPrompt",
+              "We sent a 6-digit security code to your email. Enter it below to verify your email address and unlock account recovery.",
             )}
           </p>
 
@@ -132,7 +157,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-              {t('auth.enterCode', '6-Digit Verification Code')}
+              {t("auth.enterCode", "6-Digit Verification Code")}
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -144,7 +169,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                 required
                 placeholder="123456"
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xl tracking-widest text-center text-slate-800 font-bold"
               />
             </div>
@@ -152,7 +177,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
 
           <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-slate-500">
-              {t('auth.didntReceive', "Didn't receive the code?")}
+              {t("auth.didntReceive", "Didn't receive the code?")}
             </span>
             <button
               type="button"
@@ -160,19 +185,21 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               onClick={handleResend}
               className={`font-semibold transition-colors flex items-center space-x-1 ${
                 cooldown > 0 || resending
-                  ? 'text-slate-400 cursor-not-allowed'
-                  : 'text-emerald-600 hover:text-emerald-800 underline'
+                  ? "text-slate-400 cursor-not-allowed"
+                  : "text-emerald-600 hover:text-emerald-800 underline"
               }`}
             >
               {resending ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t('auth.sending', 'Sending...')}</span>
+                  <span>{t("auth.sending", "Sending...")}</span>
                 </>
               ) : cooldown > 0 ? (
-                <span>{t('auth.resendIn', 'Resend in')} {cooldown}s</span>
+                <span>
+                  {t("auth.resendIn", "Resend in")} {cooldown}s
+                </span>
               ) : (
-                <span>{t('auth.resendCode', 'Resend Code')}</span>
+                <span>{t("auth.resendCode", "Resend Code")}</span>
               )}
             </button>
           </div>
@@ -183,14 +210,18 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               onClick={onClose}
               className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors"
             >
-              {t('common.cancel', 'Cancel')}
+              {t("common.cancel", "Cancel")}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-50"
             >
-              <span>{loading ? t('auth.verifying', 'Verifying...') : t('auth.confirmVerification', 'Confirm Verification')}</span>
+              <span>
+                {loading
+                  ? t("auth.verifying", "Verifying...")
+                  : t("auth.confirmVerification", "Confirm Verification")}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
