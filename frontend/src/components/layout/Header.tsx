@@ -42,12 +42,12 @@ export const Header: React.FC<HeaderProps> = ({
   const userRef = useRef<HTMLDivElement>(null);
 
   const TAB_TITLES: Record<NavigationTab, string> = {
-    dashboard: t('nav.dashboard', 'Financial Overview'),
-    transactions: t('nav.transactions', 'Transaction Ledger'),
-    budgets: t('nav.budgets', 'Monthly Budgets'),
-    analytics: t('nav.analytics', 'Analytics & Trends'),
-    categories: t('nav.categories', 'Expense & Income Categories'),
-    settings: t('nav.settings', 'Preferences & Data'),
+    dashboard: t('nav.dashboard', 'Overview'),
+    transactions: t('nav.transactions', 'Transactions'),
+    budgets: t('nav.budgets', 'Budgets'),
+    analytics: t('nav.analytics', 'Spending Insights'),
+    categories: t('nav.categories', 'Categories'),
+    settings: t('nav.settings', 'Settings'),
   };
 
   // Close dropdowns on outside click

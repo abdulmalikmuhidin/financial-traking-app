@@ -721,15 +721,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="mt-8 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
           <div>
             <span className="block font-semibold text-slate-200">Email Verified</span>
-            <span>OTP & Security Code</span>
+            <span>Secure 6-digit OTP</span>
           </div>
           <div>
-            <span className="block font-semibold text-slate-200">{t('auth.jwtBcrypt', 'JWT & Bcrypt')}</span>
-            <span>Hashed credentials</span>
+            <span className="block font-semibold text-slate-200">{t('auth.jwtBcrypt', 'Bank-Grade Security')}</span>
+            <span>256-bit encryption</span>
           </div>
           <div>
-            <span className="block font-semibold text-slate-200">{t('auth.mongoReady', 'MongoDB Ready')}</span>
-            <span>Atlas & Fallback</span>
+            <span className="block font-semibold text-slate-200">{t('auth.mongoReady', 'Automatic Cloud Backup')}</span>
+            <span>Synced safely</span>
           </div>
         </div>
       </div>

@@ -1,10 +1,5 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction } from '@/types';
 import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -34,6 +29,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Set default form values on open or edit
@@ -49,6 +45,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setPaymentMethod(transactionToEdit.paymentMethod || 'Credit Card');
       setNotes(transactionToEdit.notes || '');
       setIsRecurring(!!transactionToEdit.isRecurring);
+      setShowMoreDetails(!!(transactionToEdit.merchant || transactionToEdit.notes || transactionToEdit.isRecurring));
     } else {
       setType('expense');
       setAmount('');
@@ -62,6 +59,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setPaymentMethod('Credit Card');
       setNotes('');
       setIsRecurring(false);
+      setShowMoreDetails(false);
     }
     setError(null);
   }, [transactionToEdit, isOpen]);
@@ -138,7 +136,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <h2 className="text-base font-bold text-slate-900">
             {transactionToEdit
               ? t('tx.modalTitleEdit', 'Edit Transaction')
-              : t('tx.modalTitleNew', 'Record New Transaction')}
+              : t('tx.modalTitleNew', 'Add Transaction')}
           </h2>
           <button
             onClick={onClose}
@@ -156,7 +154,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
-          {/* Type Selector (Segmented) */}
+          {/* Type Selector (Expense vs Income) */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
             <button
               type="button"
@@ -171,7 +169,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {t('tx.typeExpense', 'Expense')}
+              Expense
             </button>
             <button
               type="button"
@@ -186,7 +184,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {t('tx.typeIncome', 'Income')}
+              Income
             </button>
           </div>
 
@@ -194,22 +192,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.amountLabel', 'Transaction Amount')} *
+                Amount *
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0.01"
                 required
+                autoFocus
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={t('tx.amountPlaceholder', '0.00')}
+                placeholder="0.00"
                 className="w-full px-3 py-2 text-sm font-mono rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.currencyLabel', 'Currency')}
+                Currency
               </label>
               <select
                 value={txCurrency}
@@ -228,14 +227,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {/* Description */}
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              {t('tx.descLabel', 'Description')} *
+              Description / What was this for? *
             </label>
             <input
               type="text"
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('tx.descPlaceholder', 'e.g. Monthly Grocery Restock')}
+              placeholder="e.g. Groceries, Rent, Salary, Coffee"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
             />
           </div>
@@ -244,7 +243,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.categoryLabel', 'Category')} *
+                Category *
               </label>
               <select
                 value={categoryId}
@@ -262,7 +261,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.dateLabel', 'Transaction Date')} *
+                Date *
               </label>
               <input
                 type="date"
@@ -274,82 +273,105 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           </div>
 
-          {/* Merchant & Payment Method */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.merchantLabel', 'Merchant / Payee')}
-              </label>
-              <input
-                type="text"
-                value={merchant}
-                onChange={(e) => setMerchant(e.target.value)}
-                placeholder={t('tx.merchantPlaceholder', 'e.g. Safeway or Direct Deposit')}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
-              />
+          {/* Progressive Disclosure Toggle */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowMoreDetails(!showMoreDetails)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              {showMoreDetails ? (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>Fewer details</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span>More details (Payee, Payment method, Notes)</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Expandable Optional Fields */}
+          {showMoreDetails && (
+            <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Merchant / Payee (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={merchant}
+                    onChange={(e) => setMerchant(e.target.value)}
+                    placeholder="e.g. Supermarket, Landlord, Employer"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
+                  >
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Bank Transfer">Bank Transfer / CBE / Telebirr</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Direct Deposit">Direct Deposit</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Additional memo or notes..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="isRecurring" className="text-xs text-slate-700 select-none cursor-pointer">
+                  Repeat monthly (recurring transaction)
+                </label>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('tx.paymentMethodLabel', 'Payment Method')}
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
-              >
-                <option value="Credit Card">Credit Card</option>
-                <option value="Debit Card">Debit Card</option>
-                <option value="Bank Transfer">Bank Transfer / CBE / Telebirr</option>
-                <option value="Cash">Cash</option>
-                <option value="Direct Deposit">Direct Deposit</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              {t('tx.notesLabel', 'Notes & Memo (Optional)')}
-            </label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={t('tx.notesPlaceholder', 'Add any additional details or context...')}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-slate-900"
-            />
-          </div>
-
-          {/* Recurring Toggle */}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="isRecurring"
-              checked={isRecurring}
-              onChange={(e) => setIsRecurring(e.target.checked)}
-              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-4 h-4"
-            />
-            <label htmlFor="isRecurring" className="text-xs text-slate-700 select-none cursor-pointer">
-              {t('tx.recurringLabel', 'Mark as recurring transaction')}
-            </label>
-          </div>
+          )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
             >
-              {t('common.cancel', 'Cancel')}
+              Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
-              {transactionToEdit ? t('common.save', 'Save Changes') : t('tx.newEntry', 'Record Transaction')}
+              {transactionToEdit ? 'Save Changes' : 'Add Transaction'}
             </button>
           </div>
         </form>

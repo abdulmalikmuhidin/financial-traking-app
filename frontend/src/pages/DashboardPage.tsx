@@ -6,7 +6,10 @@ import {
   PiggyBank, 
   Plus, 
   ArrowRight,
-  Receipt
+  Receipt,
+  PieChart,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { Transaction, NavigationTab } from '@/types';
 import { useAuth } from '@/context/AuthContext';
@@ -30,10 +33,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { transactions, budgets, categories, currency, convertAmount } = useFinance();
   const { t, language } = useLanguage();
 
-  const currentMonth = '2026-10';
-  const previousMonth = '2026-09';
+  // Dynamic current & previous month resolution
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-  // Overall Financial Calculations
+  const monthName = now.toLocaleString(language === 'am' ? 'am-ET' : 'en-US', { month: 'long', year: 'numeric' });
+
+  // Financial Calculations
   const stats = useMemo(() => {
     let totalAllTimeIncome = 0;
     let totalAllTimeExpense = 0;
@@ -43,12 +51,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
     let prevMonthIncome = 0;
     let prevMonthExpense = 0;
-
-    // Daily spending accumulator for October 2026
-    const dailySpending: Record<number, number> = {};
-    for (let day = 1; day <= 31; day++) {
-      dailySpending[day] = 0;
-    }
 
     for (const tx of transactions) {
       const val = convertAmount(tx.amount, tx.currency);
@@ -64,17 +66,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         totalAllTimeExpense += val;
         if (tx.date.startsWith(currentMonth)) {
           currentMonthExpense += val;
-          const dayNum = parseInt(tx.date.split('-')[2], 10);
-          if (!isNaN(dayNum)) {
-            dailySpending[dayNum] = (dailySpending[dayNum] || 0) + val;
-          }
         } else if (tx.date.startsWith(previousMonth)) {
           prevMonthExpense += val;
         }
       }
     }
 
-    const netWorth = totalAllTimeIncome - totalAllTimeExpense;
+    const netBalance = totalAllTimeIncome - totalAllTimeExpense;
     const currentMonthNet = currentMonthIncome - currentMonthExpense;
     const savingsRate = currentMonthIncome > 0 ? Math.max(0, (currentMonthNet / currentMonthIncome) * 100) : 0;
 
@@ -87,23 +85,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       : 0;
 
     return {
-      netWorth,
+      netBalance,
       currentMonthIncome,
       currentMonthExpense,
       currentMonthNet,
       savingsRate,
       incomeGrowth,
       expenseGrowth,
-      dailySpending,
     };
   }, [transactions, currentMonth, previousMonth, convertAmount]);
 
+  // Recent 5 Transactions
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 6);
+      .slice(0, 5);
   }, [transactions]);
 
+  // Budget Summary for Active Month
   const budgetSummary = useMemo(() => {
     const spendingByCat: Record<string, number> = {};
     for (const tx of transactions) {
@@ -119,6 +118,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       const pct = Math.min((spent / b.monthlyLimit) * 100, 100);
       const isExceeded = spent > b.monthlyLimit;
       const isWarning = !isExceeded && (spent / b.monthlyLimit) >= 0.8;
+      const remaining = Math.max(0, b.monthlyLimit - spent);
 
       return {
         ...b,
@@ -129,14 +129,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         pct,
         isExceeded,
         isWarning,
+        remaining,
       };
     });
   }, [budgets, categories, transactions, currentMonth, convertAmount]);
 
-  const maxDaySpend = useMemo(() => {
-    const values = Object.values(stats.dailySpending);
-    return Math.max(...values, 200);
-  }, [stats.dailySpending]);
+  // Top Spending Categories this month
+  const topSpendingCategories = useMemo(() => {
+    const map: Record<string, number> = {};
+    let totalExpense = 0;
+
+    for (const tx of transactions) {
+      if (tx.type === 'expense' && tx.date.startsWith(currentMonth)) {
+        const val = convertAmount(tx.amount, tx.currency);
+        map[tx.categoryId] = (map[tx.categoryId] || 0) + val;
+        totalExpense += val;
+      }
+    }
+
+    return Object.entries(map)
+      .map(([catId, amount]) => {
+        const cat = categories.find((c) => c.id === catId);
+        return {
+          id: catId,
+          name: cat?.name || 'Other',
+          color: cat?.color || '#64748B',
+          icon: cat?.icon || 'Tag',
+          amount,
+          percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 4);
+  }, [transactions, categories, currentMonth, convertAmount]);
 
   return (
     <div className="space-y-6">
@@ -145,82 +170,92 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-lg font-bold tracking-tight">
-              {t('dash.welcome', 'Good day')}, {currentUser?.name?.split(' ')[0] || 'Member'}
+              {t('dash.welcome', 'Good day')}, {currentUser?.name?.split(' ')[0] || 'there'}!
             </h1>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-            {t('dash.realBanner', 'Here is your real-time financial trajectory and budget status for October 2026.')}
+            Financial summary and budget status for <strong className="text-white font-medium">{monthName}</strong>.
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={onOpenNewTransaction}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors whitespace-nowrap cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>{t('nav.addTransaction', 'Record Transaction')}</span>
+            <span>{t('nav.addTransaction', 'Add Transaction')}</span>
           </button>
         </div>
       </div>
 
-      {/* Primary 4 Metric Cards */}
+      {/* Primary 4 Financial Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Net Balance Card */}
-        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        {/* Total Available Balance */}
+        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium">{t('dash.netBalance', 'Total Net Balance')}</span>
-            <Wallet className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-medium text-slate-600">Total Balance</span>
+            <div className="p-2 rounded-lg bg-slate-100 text-slate-700">
+              <Wallet className="w-4 h-4" />
+            </div>
           </div>
           <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
-            {formatCurrency(stats.netWorth, currency)}
+            {formatCurrency(stats.netBalance, currency)}
           </div>
-          <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500">
-            <span>{t('dash.netLiquidity', 'Cumulative liquidity in')} {currency}</span>
+          <div className="mt-2 text-[11px] text-slate-500">
+            Available funds across all records
           </div>
         </div>
 
-        {/* Monthly Income Card */}
-        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        {/* Monthly Inflow / Income */}
+        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium">{t('dash.inflows', 'October Inflows')}</span>
-            <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-medium text-slate-600">Income This Month</span>
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600 tabular-nums">
             +{formatCurrency(stats.currentMonthIncome, currency)}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="text-emerald-700 font-semibold font-mono">
-              {stats.incomeGrowth >= 0 ? '+' : ''}{formatPercentage(stats.incomeGrowth)}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>{t('dash.vsPrevMonth', 'vs September')}</span>
+            {stats.incomeGrowth !== 0 ? (
+              <span className={`font-semibold font-mono ${stats.incomeGrowth >= 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                {stats.incomeGrowth >= 0 ? '+' : ''}{formatPercentage(stats.incomeGrowth)}
+              </span>
+            ) : null}
+            <span>compared to last month</span>
           </div>
         </div>
 
-        {/* Monthly Expenses Card */}
-        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        {/* Monthly Outflow / Expenses */}
+        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium">{t('dash.outflows', 'October Outflows')}</span>
-            <ArrowDownRight className="w-4 h-4 text-rose-500" />
+            <span className="text-xs font-medium text-slate-600">Spending This Month</span>
+            <div className="p-2 rounded-lg bg-rose-50 text-rose-500">
+              <ArrowDownRight className="w-4 h-4" />
+            </div>
           </div>
           <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
             -{formatCurrency(stats.currentMonthExpense, currency)}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="text-slate-700 font-semibold font-mono">
-              {stats.expenseGrowth >= 0 ? '+' : ''}{formatPercentage(stats.expenseGrowth)}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>{t('dash.vsPrevMonth', 'vs September')}</span>
+            {stats.expenseGrowth !== 0 ? (
+              <span className="text-slate-700 font-semibold font-mono">
+                {stats.expenseGrowth >= 0 ? '+' : ''}{formatPercentage(stats.expenseGrowth)}
+              </span>
+            ) : null}
+            <span>compared to last month</span>
           </div>
         </div>
 
-        {/* Net Savings & Rate Card */}
-        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        {/* Net Savings & Rate */}
+        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-slate-300 transition-colors">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium">{t('dash.netSavings', 'Net Savings & Rate')}</span>
-            <PiggyBank className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-medium text-slate-600">Savings This Month</span>
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+              <PiggyBank className="w-4 h-4" />
+            </div>
           </div>
           <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
             {formatCurrency(stats.currentMonthNet, currency)}
@@ -229,126 +264,139 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="text-emerald-700 font-semibold font-mono">
               {formatPercentage(stats.savingsRate)}
             </span>
-            <span aria-hidden="true">·</span>
-            <span>{t('dash.savedRate', 'of monthly income saved')}</span>
+            <span>of monthly income saved</span>
           </div>
         </div>
       </div>
 
-      {/* Middle Section: Daily Spending Trend Chart & Budgets Preview */}
+      {/* Middle Section: Spending Breakdown & Budget Tracking */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Daily Spending Rhythm */}
-        <div className="lg:col-span-8 p-5 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+        {/* Where is my money going? (Top Spending Categories) */}
+        <div className="lg:col-span-6 p-5 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">
-                  {t('dash.dailyRhythm', 'Daily Spending Rhythm (October 2026)')}
+                  Where Is Your Money Going?
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {t('dash.dailySub', 'Track day-by-day expense occurrences and peak spending spikes.')}
+                  Top spending categories for this month
                 </p>
               </div>
-
-              <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
-                {t('dash.peak', 'Peak')}: {formatCurrency(maxDaySpend, currency, true, language)}
-              </span>
+              <button
+                onClick={() => onNavigate('analytics')}
+                className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1"
+              >
+                <span>Insights</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
             </div>
 
-            {/* SVG Daily Bar Strip */}
-            <div className="h-44 w-full flex items-end gap-1.5 pt-6 pb-2 border-b border-slate-100">
-              {Array.from({ length: 22 }, (_, i) => i + 1).map((day) => {
-                const amount = stats.dailySpending[day] || 0;
-                const heightPct = amount > 0 ? Math.max((amount / maxDaySpend) * 100, 6) : 2;
-                const hasSpend = amount > 0;
-
-                return (
-                  <div
-                    key={day}
-                    className="flex-1 flex flex-col items-center h-full justify-end group relative"
-                  >
-                    {hasSpend && (
-                      <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded shadow-sm">
-                        {language === 'am' ? 'ጥቅምት' : 'Oct'} {day}: {formatCurrency(amount, currency, true, language)}
+            {topSpendingCategories.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500">
+                <PieChart className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p>No expenses recorded for this month yet.</p>
+                <button
+                  onClick={onOpenNewTransaction}
+                  className="mt-2 text-xs font-semibold text-emerald-700 hover:underline"
+                >
+                  Record an expense
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-1">
+                {topSpendingCategories.map((c) => (
+                  <div key={c.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: c.color }}
+                        />
+                        <span className="font-medium text-slate-800">{c.name}</span>
+                        <span className="text-slate-400 font-mono text-[11px]">
+                          ({formatPercentage(c.percentage)})
+                        </span>
                       </div>
-                    )}
-
-                    <div
-                      className={`w-full rounded-t-xs transition-all ${
-                        hasSpend
-                          ? 'bg-slate-900 group-hover:bg-emerald-600'
-                          : 'bg-slate-100'
-                      }`}
-                      style={{ height: `${heightPct}%` }}
-                    />
-                    <span className="text-[10px] text-slate-400 mt-2 font-mono">
-                      {day % 3 === 1 ? day : ''}
-                    </span>
+                      <span className="font-mono tabular-nums font-semibold text-slate-900">
+                        {formatCurrency(c.amount, currency)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(c.percentage, 100)}%`,
+                          backgroundColor: c.color,
+                        }}
+                      />
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-            <span>{t('dash.monthTotal', 'Current Month Total')}: <strong className="text-slate-800 font-mono">{formatCurrency(stats.currentMonthExpense, currency, true, language)}</strong></span>
-            <button
-              onClick={() => onNavigate('analytics')}
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 transition-colors"
-            >
-              <span>{t('dash.fullAnalytics', 'Full Analytics')}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Total monthly expenses:</span>
+            <strong className="text-slate-900 font-mono">
+              {formatCurrency(stats.currentMonthExpense, currency)}
+            </strong>
           </div>
         </div>
 
-        {/* Budget Progress Snapshot */}
-        <div className="lg:col-span-4 p-5 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+        {/* Am I staying within budget? (Budget Tracking) */}
+        <div className="lg:col-span-6 p-5 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900">
-                {t('dash.budgetTracking', 'Budget Tracking')}
-              </h3>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Budget Tracking
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Monthly spending limits & remaining balance
+                </p>
+              </div>
               <button
                 onClick={() => onNavigate('budgets')}
-                className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1"
               >
-                {t('dash.viewAll', 'View all')} ({budgets.length})
+                <span>View all ({budgets.length})</span>
+                <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
             {budgetSummary.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-500">
-                <p>No budgets configured for this month.</p>
+              <div className="p-8 text-center text-xs text-slate-500">
+                <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p>No monthly budgets set up yet.</p>
                 <button
                   onClick={() => onNavigate('budgets')}
                   className="mt-2 text-xs font-semibold text-emerald-700 hover:underline"
                 >
-                  Configure monthly targets
+                  Set your first budget target
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-1">
                 {budgetSummary.map((b) => (
                   <div key={b.id} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span
-                          className="w-2 h-2 rounded-full"
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: b.color }}
                         />
-                        <span className="font-medium text-slate-800 truncate">
-                          {b.categoryName}
-                        </span>
+                        <span className="font-medium text-slate-800">{b.categoryName}</span>
                       </div>
                       <span className="font-mono tabular-nums text-slate-600">
                         {formatCurrency(b.spent, currency)} / {formatCurrency(b.monthlyLimit, currency)}
                       </span>
                     </div>
 
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${
+                        className={`h-2 rounded-full transition-all duration-300 ${
                           b.isExceeded
                             ? 'bg-rose-500'
                             : b.isWarning
@@ -358,33 +406,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         style={{ width: `${b.pct}%` }}
                       />
                     </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{formatPercentage(b.pct)} used</span>
+                      <span className={b.isExceeded ? 'text-rose-600 font-semibold' : 'text-slate-500'}>
+                        {b.isExceeded ? 'Exceeded limit' : `${formatCurrency(b.remaining, currency)} remaining`}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
-            <span>{t('dash.threshold', 'Threshold limit: 80%')}</span>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Keep your spending under 80% to maintain savings.</span>
             <button
               onClick={() => onNavigate('budgets')}
               className="text-xs font-semibold text-emerald-700 hover:underline"
             >
-              {t('dash.adjustLimits', 'Adjust limits')}
+              Adjust limits
             </button>
           </div>
         </div>
       </div>
 
-      {/* Bottom Section: Recent Transactions Ledger Preview */}
+      {/* Bottom Section: Recent Transactions */}
       <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
-              {t('dash.recentTransactions', 'Recent Transactions')}
+              Recent Transactions
             </h3>
             <p className="text-xs text-slate-500">
-              {t('dash.recentSub', 'Latest financial activity recorded across your accounts.')}
+              Your latest financial activities
             </p>
           </div>
 
@@ -392,7 +447,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onClick={() => onNavigate('transactions')}
             className="flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
           >
-            <span>{t('dash.openLedger', 'Open Ledger')}</span>
+            <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -400,7 +455,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {recentTransactions.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500">
             <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p>No transactions logged yet.</p>
+            <p>No transactions recorded yet.</p>
             <button
               onClick={onOpenNewTransaction}
               className="mt-2 text-xs font-semibold text-emerald-700 hover:underline"
@@ -434,7 +489,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         {tx.description}
                       </p>
                       <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                        <span>{category?.name || 'Uncategorized'}</span>
+                        <span>{category?.name || 'General'}</span>
                         <span aria-hidden="true">·</span>
                         <span className="font-mono">{formatDate(tx.date, language)}</span>
                         {tx.merchant && (
@@ -470,4 +525,3 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     </div>
   );
 };
-

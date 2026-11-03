@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: t('nav.dashboard', 'Dashboard'), icon: LayoutDashboard },
     { id: 'transactions', label: t('nav.transactions', 'Transactions'), icon: ArrowLeftRight },
     { id: 'budgets', label: t('nav.budgets', 'Budgets'), icon: PieChart },
-    { id: 'analytics', label: t('nav.analytics', 'Analytics & Reports'), icon: BarChart3 },
+    { id: 'analytics', label: t('nav.analytics', 'Spending Insights'), icon: BarChart3 },
     { id: 'categories', label: t('nav.categories', 'Categories'), icon: Tags },
     { id: 'settings', label: t('nav.settings', 'Settings'), icon: Settings },
   ];

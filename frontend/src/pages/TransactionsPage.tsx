@@ -49,8 +49,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'thisMonth' | 'lastMonth'>('all');
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
 
-  const currentMonth = '2026-10';
-  const previousMonth = '2026-09';
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
   // Filtered & sorted records
   const filteredTransactions = useMemo(() => {

@@ -31,7 +31,9 @@ export const BudgetsPage: React.FC = () => {
   } = useFinance();
   const { t, language } = useLanguage();
 
-  const currentMonth = '2026-10';
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthName = now.toLocaleString(language === 'am' ? 'am-ET' : 'en-US', { month: 'long', year: 'numeric' });
 
   // Budget Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -127,7 +129,7 @@ export const BudgetsPage: React.FC = () => {
             {t('bgt.title', 'Monthly Spending Budgets')}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            {t('bgt.subtitle', 'Target limits and actual expenses for October 2026.')}
+            {t('bgt.subtitle', 'Target limits and actual expenses for')} {monthName}.
           </p>
         </div>
 

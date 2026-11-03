@@ -392,12 +392,12 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-semibold text-white mb-2">
-                  {t("landing.feat6Title", "MongoDB & Cloud Persistence")}
+                  {t("landing.feat6Title", "Encrypted Cloud Sync")}
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {t(
                     "landing.feat6Desc",
-                    "Secure bcrypt encryption, JWT session management, and persistent storage with automatic offline fallback.",
+                    "Your financial records are protected by bank-grade encryption and automatically backed up safely.",
                   )}
                 </p>
               </div>
