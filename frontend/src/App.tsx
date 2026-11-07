@@ -51,6 +51,10 @@ const MainApp: React.FC = () => {
         <AuthPage
           initialMode={authView}
           onBackToHome={() => setAuthView(null)}
+          onSuccess={() => {
+            setAuthView(null);
+            setCurrentTab("dashboard");
+          }}
         />
       );
     }
@@ -58,7 +62,10 @@ const MainApp: React.FC = () => {
     return (
       <HomePage
         onGoToAuth={(mode) => setAuthView(mode)}
-        onGoToDashboard={() => setCurrentTab("dashboard")}
+        onGoToDashboard={() => {
+          setAuthView(null);
+          setCurrentTab("dashboard");
+        }}
       />
     );
   }

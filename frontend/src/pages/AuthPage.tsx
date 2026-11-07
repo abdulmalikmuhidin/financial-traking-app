@@ -3,42 +3,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Wallet, 
-  ArrowRight, 
-  Lock, 
-  Mail, 
-  User as UserIcon, 
+import React, { useState, useEffect } from "react";
+import {
+  Wallet,
+  ArrowRight,
+  Lock,
+  Mail,
+  User as UserIcon,
   Coins,
   Globe,
   ArrowLeft,
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  Send
-} from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext';
-import { SUPPORTED_CURRENCIES } from '@/utils/currencies';
+  Send,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { SUPPORTED_CURRENCIES } from "@/utils/currencies";
 
-type AuthMode = 'login' | 'register' | 'forgot' | 'otp';
+type AuthMode = "login" | "register" | "forgot" | "otp";
 
 interface AuthPageProps {
-  initialMode?: 'login' | 'register';
+  initialMode?: "login" | "register";
   onBackToHome?: () => void;
+  onSuccess?: () => void;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({
-  initialMode = 'login',
+  initialMode = "login",
   onBackToHome,
+  onSuccess,
 }) => {
-  const { 
-    login, 
-    register, 
-    requestPasswordReset, 
-    submitPasswordReset, 
-    sendOtpLogin, 
+  const {
+    login,
+    register,
+    requestPasswordReset,
+    submitPasswordReset,
+    sendOtpLogin,
     verifyOtpLogin,
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -46,34 +48,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [mode, setMode] = useState<AuthMode>(initialMode);
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   // Register form state
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regCurrency, setRegCurrency] = useState(() => (language === 'am' ? 'ETB' : 'USD'));
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regCurrency, setRegCurrency] = useState(() =>
+    language === "am" ? "ETB" : "USD",
+  );
 
   useEffect(() => {
-    if (language === 'am' && regCurrency === 'USD') {
-      setRegCurrency('ETB');
-    } else if (language === 'en' && regCurrency === 'ETB') {
-      setRegCurrency('USD');
+    if (language === "am" && regCurrency === "USD") {
+      setRegCurrency("ETB");
+    } else if (language === "en" && regCurrency === "ETB") {
+      setRegCurrency("USD");
     }
   }, [language]);
 
   // Forgot password form state
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotStep, setForgotStep] = useState<'request' | 'reset'>('request');
-  const [resetCode, setResetCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotStep, setForgotStep] = useState<"request" | "reset">("request");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // OTP Login form state
-  const [otpEmail, setOtpEmail] = useState('');
-  const [otpStep, setOtpStep] = useState<'request' | 'verify'>('request');
-  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
+  const [otpCode, setOtpCode] = useState("");
 
   // Resend cooldown states
   const [forgotCooldown, setForgotCooldown] = useState(0);
@@ -101,7 +105,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [loading, setLoading] = useState(false);
 
   const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'am' : 'en');
+    setLanguage(language === "en" ? "am" : "en");
   };
 
   const clearMessages = () => {
@@ -114,12 +118,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     e.preventDefault();
     clearMessages();
 
-    if (!loginEmail || !loginEmail.includes('@')) {
-      setError(t('auth.invalidEmail', 'Please enter a valid email address.'));
+    if (!loginEmail || !loginEmail.includes("@")) {
+      setError(t("auth.invalidEmail", "Please enter a valid email address."));
       return;
     }
     if (!loginPassword || loginPassword.length < 6) {
-      setError(t('auth.shortPassword', 'Password must be at least 6 characters.'));
+      setError(
+        t("auth.shortPassword", "Password must be at least 6 characters."),
+      );
       return;
     }
 
@@ -128,7 +134,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(false);
 
     if (!res.success) {
-      setError(res.error || t('auth.loginFailed', 'Login failed. Please check credentials.'));
+      setError(
+        res.error ||
+          t("auth.loginFailed", "Login failed. Please check credentials."),
+      );
+    } else {
+      onSuccess?.();
     }
   };
 
@@ -138,15 +149,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     clearMessages();
 
     if (!regName.trim()) {
-      setError(t('auth.nameRequired', 'Please enter your full name.'));
+      setError(t("auth.nameRequired", "Please enter your full name."));
       return;
     }
-    if (!regEmail || !regEmail.includes('@')) {
-      setError(t('auth.invalidEmail', 'Please enter a valid email address.'));
+    if (!regEmail || !regEmail.includes("@")) {
+      setError(t("auth.invalidEmail", "Please enter a valid email address."));
       return;
     }
     if (!regPassword || regPassword.length < 6) {
-      setError(t('auth.shortPassword', 'Password must be at least 6 characters.'));
+      setError(
+        t("auth.shortPassword", "Password must be at least 6 characters."),
+      );
       return;
     }
 
@@ -155,7 +168,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(false);
 
     if (!res.success) {
-      setError(res.error || t('auth.registerFailed', 'Registration failed.'));
+      setError(res.error || t("auth.registerFailed", "Registration failed."));
+    } else {
+      onSuccess?.();
     }
   };
 
@@ -164,8 +179,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     e.preventDefault();
     clearMessages();
 
-    if (!forgotEmail || !forgotEmail.includes('@')) {
-      setError(t('auth.invalidEmail', 'Please enter a valid email address.'));
+    if (!forgotEmail || !forgotEmail.includes("@")) {
+      setError(t("auth.invalidEmail", "Please enter a valid email address."));
       return;
     }
 
@@ -174,11 +189,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(false);
 
     if (res.success) {
-      setSuccess(t('auth.codeSentSuccess', 'Security code dispatched to your email!'));
-      setForgotStep('reset');
+      setSuccess(
+        t("auth.codeSentSuccess", "Security code dispatched to your email!"),
+      );
+      setForgotStep("reset");
       setForgotCooldown(res.cooldownSeconds || 60);
     } else {
-      setError(res.error || 'Failed to dispatch reset code.');
+      setError(res.error || "Failed to dispatch reset code.");
     }
   };
 
@@ -188,26 +205,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     clearMessages();
 
     if (resetCode.trim().length !== 6) {
-      setError('Please enter a 6-digit recovery code.');
+      setError("Please enter a 6-digit recovery code.");
       return;
     }
     if (newPassword.length < 6) {
-      setError(t('auth.shortPassword', 'Password must be at least 6 characters.'));
+      setError(
+        t("auth.shortPassword", "Password must be at least 6 characters."),
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(t('auth.passwordsDoNotMatch', 'Passwords do not match.'));
+      setError(t("auth.passwordsDoNotMatch", "Passwords do not match."));
       return;
     }
 
     setLoading(true);
-    const res = await submitPasswordReset(forgotEmail, resetCode.trim(), newPassword);
+    const res = await submitPasswordReset(
+      forgotEmail,
+      resetCode.trim(),
+      newPassword,
+    );
     setLoading(false);
 
     if (res.success) {
-      setSuccess('Password updated successfully! Welcome back.');
+      setSuccess("Password updated successfully! Welcome back.");
     } else {
-      setError(res.error || 'Password reset failed.');
+      setError(res.error || "Password reset failed.");
     }
   };
 
@@ -216,8 +239,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     e.preventDefault();
     clearMessages();
 
-    if (!otpEmail || !otpEmail.includes('@')) {
-      setError(t('auth.invalidEmail', 'Please enter a valid email address.'));
+    if (!otpEmail || !otpEmail.includes("@")) {
+      setError(t("auth.invalidEmail", "Please enter a valid email address."));
       return;
     }
 
@@ -226,11 +249,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(false);
 
     if (res.success) {
-      setSuccess(t('auth.codeSentSuccess', 'Security code dispatched to your email!'));
-      setOtpStep('verify');
+      setSuccess(
+        t("auth.codeSentSuccess", "Security code dispatched to your email!"),
+      );
+      setOtpStep("verify");
       setOtpCooldown(res.cooldownSeconds || 60);
     } else {
-      setError(res.error || 'Failed to send one-time login code.');
+      setError(res.error || "Failed to send one-time login code.");
     }
   };
 
@@ -240,7 +265,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     clearMessages();
 
     if (otpCode.trim().length !== 6) {
-      setError('Please enter the 6-digit one-time code.');
+      setError("Please enter the 6-digit one-time code.");
       return;
     }
 
@@ -249,7 +274,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoading(false);
 
     if (!res.success) {
-      setError(res.error || 'Invalid login code.');
+      setError(res.error || "Invalid login code.");
+    } else {
+      onSuccess?.();
     }
   };
 
@@ -263,7 +290,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>{t('auth.backToHome', '← Back to Home')}</span>
+            <span>{t("auth.backToHome", "← Back to Home")}</span>
           </button>
         )}
         <button
@@ -272,7 +299,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           title="Change language / ቋንቋ ቀይር"
         >
           <Globe className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{language === 'en' ? 'አማርኛ' : 'English'}</span>
+          <span>{language === "en" ? "አማርኛ" : "English"}</span>
         </button>
       </div>
 
@@ -285,7 +312,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           FinTrack
         </h1>
         <p className="mt-1 text-xs text-slate-400">
-          {t('app.subtitle', 'Clarity, discipline, and intelligence for your personal finances.')}
+          {t(
+            "app.subtitle",
+            "Clarity, discipline, and intelligence for your personal finances.",
+          )}
         </p>
       </div>
 
@@ -293,35 +323,35 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-slate-900 border border-slate-800 py-7 px-6 shadow-2xl rounded-2xl sm:px-9">
           {/* Main Segmented Toggle: Sign In vs Create Account */}
-          {(mode === 'login' || mode === 'register') && (
+          {(mode === "login" || mode === "register") && (
             <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-lg mb-5 border border-slate-800">
               <button
                 type="button"
                 onClick={() => {
-                  setMode('login');
+                  setMode("login");
                   clearMessages();
                 }}
                 className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                  mode === 'login'
-                    ? 'bg-slate-800 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200'
+                  mode === "login"
+                    ? "bg-slate-800 text-white shadow-xs"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {t('auth.signIn', 'Sign In')}
+                {t("auth.signIn", "Sign In")}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setMode('register');
+                  setMode("register");
                   clearMessages();
                 }}
                 className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                  mode === 'register'
-                    ? 'bg-slate-800 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200'
+                  mode === "register"
+                    ? "bg-slate-800 text-white shadow-xs"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {t('auth.createAccount', 'Create Account')}
+                {t("auth.createAccount", "Create Account")}
               </button>
             </div>
           )}
@@ -342,11 +372,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           )}
 
           {/* MODE 1: Standard Password Sign In */}
-          {mode === 'login' && (
+          {mode === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  {t('auth.emailLabel', 'Email Address')}
+                  {t("auth.emailLabel", "Email Address")}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -355,7 +385,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
-                    placeholder={t('auth.emailPlaceholder', 'you@example.com')}
+                    placeholder={t("auth.emailPlaceholder", "you@example.com")}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white placeholder:text-slate-600"
                   />
                 </div>
@@ -364,18 +394,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-medium text-slate-300">
-                    {t('auth.passwordLabel', 'Password')}
+                    {t("auth.passwordLabel", "Password")}
                   </label>
                   <button
                     type="button"
                     onClick={() => {
-                      setMode('forgot');
+                      setMode("forgot");
                       setForgotEmail(loginEmail);
                       clearMessages();
                     }}
                     className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                   >
-                    {t('auth.forgotPassword', 'Forgot Password?')}
+                    {t("auth.forgotPassword", "Forgot Password?")}
                   </button>
                 </div>
                 <div className="relative">
@@ -396,7 +426,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 disabled={loading}
                 className="w-full mt-2 py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                {loading ? t('auth.signingIn', 'Signing In...') : t('auth.submitSignIn', 'Sign In to Workspace')}
+                {loading
+                  ? t("auth.signingIn", "Signing In...")
+                  : t("auth.submitSignIn", "Sign In to Workspace")}
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
 
@@ -405,25 +437,27 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setMode('otp');
+                    setMode("otp");
                     setOtpEmail(loginEmail);
                     clearMessages();
                   }}
                   className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>{t('auth.emailOtpSignIn', 'Sign in with Email Code (OTP)')}</span>
+                  <span>
+                    {t("auth.emailOtpSignIn", "Sign in with Email Code (OTP)")}
+                  </span>
                 </button>
               </div>
             </form>
           )}
 
           {/* MODE 2: Registration */}
-          {mode === 'register' && (
+          {mode === "register" && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  {t('auth.nameLabel', 'Full Name')}
+                  {t("auth.nameLabel", "Full Name")}
                 </label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -432,7 +466,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     required
-                    placeholder={t('auth.namePlaceholder', 'e.g. Alex Morgan')}
+                    placeholder={t("auth.namePlaceholder", "e.g. Alex Morgan")}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white placeholder:text-slate-600"
                   />
                 </div>
@@ -440,7 +474,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  {t('auth.emailLabel', 'Email Address')}
+                  {t("auth.emailLabel", "Email Address")}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -449,7 +483,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     required
-                    placeholder={t('auth.emailPlaceholder', 'you@example.com')}
+                    placeholder={t("auth.emailPlaceholder", "you@example.com")}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white placeholder:text-slate-600"
                   />
                 </div>
@@ -457,7 +491,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  {t('auth.passwordLabel', 'Password')}
+                  {t("auth.passwordLabel", "Password")}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -466,7 +500,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     required
-                    placeholder={t('auth.passwordPlaceholder', 'Minimum 6 characters')}
+                    placeholder={t(
+                      "auth.passwordPlaceholder",
+                      "Minimum 6 characters",
+                    )}
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white placeholder:text-slate-600"
                   />
                 </div>
@@ -474,7 +511,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  {t('auth.preferredCurrency', 'Preferred Base Currency')}
+                  {t("auth.preferredCurrency", "Preferred Base Currency")}
                 </label>
                 <div className="relative">
                   <Coins className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -484,7 +521,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white"
                   >
                     {Object.values(SUPPORTED_CURRENCIES).map((c) => (
-                      <option key={c.code} value={c.code} className="bg-slate-900">
+                      <option
+                        key={c.code}
+                        value={c.code}
+                        className="bg-slate-900"
+                      >
                         {c.code} ({c.symbol}) - {c.name}
                       </option>
                     ))}
@@ -497,20 +538,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 disabled={loading}
                 className="w-full mt-2 py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                {loading ? t('auth.creatingAccount', 'Creating Account...') : t('auth.submitRegister', 'Create My Account')}
+                {loading
+                  ? t("auth.creatingAccount", "Creating Account...")
+                  : t("auth.submitRegister", "Create My Account")}
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
           )}
 
           {/* MODE 3: Forgot Password Recovery */}
-          {mode === 'forgot' && (
+          {mode === "forgot" && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
-                    setMode('login');
+                    setMode("login");
                     clearMessages();
                   }}
                   className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
@@ -519,19 +562,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </button>
                 <div>
                   <h3 className="text-sm font-bold text-white">
-                    {t('auth.resetPassword', 'Reset Password')}
+                    {t("auth.resetPassword", "Reset Password")}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    {t('auth.resetPasswordSub', 'Enter your registered email to receive a recovery code.')}
+                    {t(
+                      "auth.resetPasswordSub",
+                      "Enter your registered email to receive a recovery code.",
+                    )}
                   </p>
                 </div>
               </div>
 
-              {forgotStep === 'request' ? (
+              {forgotStep === "request" ? (
                 <form onSubmit={handleForgotRequest} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.emailLabel', 'Email Address')}
+                      {t("auth.emailLabel", "Email Address")}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -551,7 +597,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     disabled={loading}
                     className="w-full py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {loading ? t('auth.sendingCode', 'Sending Code...') : t('auth.sendResetCode', 'Send Reset Code')}
+                    {loading
+                      ? t("auth.sendingCode", "Sending Code...")
+                      : t("auth.sendResetCode", "Send Reset Code")}
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
@@ -559,13 +607,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <form onSubmit={handleForgotReset} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.enterResetCode', 'Verification Code (6 digits)')}
+                      {t("auth.enterResetCode", "Verification Code (6 digits)")}
                     </label>
                     <input
                       type="text"
                       maxLength={6}
                       value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                      onChange={(e) =>
+                        setResetCode(e.target.value.replace(/\D/g, ""))
+                      }
                       required
                       placeholder="123456"
                       className="w-full text-center text-xl font-mono tracking-widest font-bold py-2 px-3 rounded-lg bg-slate-950 border border-slate-800 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white"
@@ -574,7 +624,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.newPasswordLabel', 'New Password')}
+                      {t("auth.newPasswordLabel", "New Password")}
                     </label>
                     <input
                       type="password"
@@ -588,7 +638,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.confirmPasswordLabel', 'Confirm New Password')}
+                      {t("auth.confirmPasswordLabel", "Confirm New Password")}
                     </label>
                     <input
                       type="password"
@@ -605,14 +655,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     disabled={loading}
                     className="w-full py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {loading ? t('auth.updatingPassword', 'Updating Password...') : t('auth.submitReset', 'Update Password & Enter')}
+                    {loading
+                      ? t("auth.updatingPassword", "Updating Password...")
+                      : t("auth.submitReset", "Update Password & Enter")}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
                   <div className="text-center pt-1">
                     <button
                       type="button"
-                      onClick={() => setForgotStep('request')}
+                      onClick={() => setForgotStep("request")}
                       className="text-[11px] text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
                     >
                       Resend code with different email
@@ -624,13 +676,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           )}
 
           {/* MODE 4: Passwordless OTP Sign In */}
-          {mode === 'otp' && (
+          {mode === "otp" && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
-                    setMode('login');
+                    setMode("login");
                     clearMessages();
                   }}
                   className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
@@ -639,19 +691,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </button>
                 <div>
                   <h3 className="text-sm font-bold text-white">
-                    {t('auth.emailOtpSignIn', 'Sign in with Email Code (OTP)')}
+                    {t("auth.emailOtpSignIn", "Sign in with Email Code (OTP)")}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    {t('auth.emailOtpSignInSub', 'Fast passwordless sign-in through your email.')}
+                    {t(
+                      "auth.emailOtpSignInSub",
+                      "Fast passwordless sign-in through your email.",
+                    )}
                   </p>
                 </div>
               </div>
 
-              {otpStep === 'request' ? (
+              {otpStep === "request" ? (
                 <form onSubmit={handleOtpRequest} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.emailLabel', 'Email Address')}
+                      {t("auth.emailLabel", "Email Address")}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -671,7 +726,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     disabled={loading}
                     className="w-full py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {loading ? t('auth.sendingCode', 'Sending Code...') : t('auth.sendLoginCode', 'Send Login Code')}
+                    {loading
+                      ? t("auth.sendingCode", "Sending Code...")
+                      : t("auth.sendLoginCode", "Send Login Code")}
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
@@ -679,13 +736,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <form onSubmit={handleOtpVerify} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      {t('auth.enterResetCode', 'Verification Code (6 digits)')}
+                      {t("auth.enterResetCode", "Verification Code (6 digits)")}
                     </label>
                     <input
                       type="text"
                       maxLength={6}
                       value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      onChange={(e) =>
+                        setOtpCode(e.target.value.replace(/\D/g, ""))
+                      }
                       required
                       placeholder="123456"
                       autoFocus
@@ -698,14 +757,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     disabled={loading}
                     className="w-full py-2.5 px-4 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {loading ? t('auth.signingIn', 'Signing In...') : t('auth.submitOtpSignIn', 'Verify & Sign In')}
+                    {loading
+                      ? t("auth.signingIn", "Signing In...")
+                      : t("auth.submitOtpSignIn", "Verify & Sign In")}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
                   <div className="text-center pt-1">
                     <button
                       type="button"
-                      onClick={() => setOtpStep('request')}
+                      onClick={() => setOtpStep("request")}
                       className="text-[11px] text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
                     >
                       Resend code or change email
@@ -720,15 +781,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         {/* Feature Trust List */}
         <div className="mt-8 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
           <div>
-            <span className="block font-semibold text-slate-200">Email Verified</span>
+            <span className="block font-semibold text-slate-200">
+              Email Verified
+            </span>
             <span>Secure 6-digit OTP</span>
           </div>
           <div>
-            <span className="block font-semibold text-slate-200">{t('auth.jwtBcrypt', 'Bank-Grade Security')}</span>
+            <span className="block font-semibold text-slate-200">
+              {t("auth.jwtBcrypt", "Bank-Grade Security")}
+            </span>
             <span>256-bit encryption</span>
           </div>
           <div>
-            <span className="block font-semibold text-slate-200">{t('auth.mongoReady', 'Automatic Cloud Backup')}</span>
+            <span className="block font-semibold text-slate-200">
+              {t("auth.mongoReady", "Automatic Cloud Backup")}
+            </span>
             <span>Synced safely</span>
           </div>
         </div>

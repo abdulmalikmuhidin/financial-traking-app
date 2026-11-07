@@ -43,7 +43,11 @@ export class AuthService {
     });
 
     // Securely generate, hash, and email the OTP verification code
-    await otpService.createAndSendOtp(cleanEmail, 'email_verification', cleanName);
+    try {
+      await otpService.createAndSendOtp(cleanEmail, 'email_verification', cleanName);
+    } catch (emailErr: any) {
+      console.warn('[Register Email Notice] Failed to send initial verification email, user registered successfully:', emailErr?.message || emailErr);
+    }
 
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.name);
 
